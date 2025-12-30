@@ -13,13 +13,16 @@ const {
    searchFilters,
    uploadImages,
    removeImage,
-   bulkDiscount
+   bulkDiscount,
+   getStock,
+   subscribeStock
 } = require("../service/productService");
 const { userVerify, adminVerify } = require("../middlewares/authVerify");
 
 //ENDPOINT: http://localhost:5000/api/product
 //read
-router.post("/products/:count", listProd); //view product records according to count numbers
+// 'api/products/100?leastStock=0'
+router.get("/products/:count", listProd); //view product records according to count numbers
 router.get("/product/:id", readAprod); //for FormEditProd.jsx → readProduct(token, id,)
 
 //write
@@ -37,5 +40,10 @@ router.post("/search-filters", searchFilters);
 router.post("/images", userVerify, uploadImages); //upload image to cloudinary
 router.post("/removeimage", userVerify, removeImage); //use .post to delete multiple images
 
+
+
+// Stock & SSE
+router.get("/stock/:id", getStock);
+router.get("/sse", subscribeStock);
 
 module.exports = router;

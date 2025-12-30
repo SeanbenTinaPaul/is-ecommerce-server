@@ -27,6 +27,6 @@ router.get("/user/order", userVerify, getOrder);
 router.post('/user/rating', userVerify, addProdRating);
 
 router.patch("/user/update-profile", userVerify, updateUserProfile);
-router.post("/user/favorite",userVerify, favoriteProduct);//pending...
+router.post("/user/favorite",userVerify, favoriteProduct);
 
 module.exports = router;

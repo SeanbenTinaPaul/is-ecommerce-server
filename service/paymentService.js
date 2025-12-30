@@ -4,7 +4,7 @@ const { update } = require("./productService");
 const stripe = require("stripe")(
    "sk_test_51QlpOAGb4ZSqFhpE6FhBvXqzDC2qX4JmY7Eq1m95ByjMqhQ9KeNcKr56CXhua6v4sRijTDVNSBaqjtJPX2lGKzmP005cQUf1Pp"
 );
-//save in cloud ONLY NOT DB → https://dashboard.stripe.com/test/payments
+//save in cloud ONLY, NOT DB → https://dashboard.stripe.com/test/payments
 exports.createPayment = async (req, res) => {
    try {
       //req.user.id from authCheck
