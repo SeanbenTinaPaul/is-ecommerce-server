@@ -62,7 +62,6 @@ exports.createUserCart = async (req, res) => {
          }
       });
 
-     
       //3. เตรียมสินค้าใหม่สำหรับ insert ลงในตาราง ProductOnCart[]
       //req.body.cart ===[{},{},...]
       let products = carts.map((item) => ({
@@ -178,9 +177,15 @@ exports.getUserCart = async (req, res) => {
          }
       });
       if (!cart) {
-         return res.status(404).json({
-            success: false,
-            message: "Cart not found."
+         return res.status(200).json({
+            success: true,
+            message: "No cart yet.",
+            ProductOnCart: [],
+            carts: null,
+            "Total price": 0,
+            totalCartDiscount: 0,
+            totalPriceNoDiscount: 0,
+            totalNet: 0
          });
       }
       //need to validate promotion vs discount → discount needs: isActive, startDate, endDate
@@ -204,6 +209,10 @@ exports.getUserCart = async (req, res) => {
       //cal promotion vs discount และ to send res with ราคาสุทธิ
       //get promotion from table Product, join to Discount with productId
       // res.send(cart);
+
+      // คำนวณราคาสุทธิ (totalNet)
+      const totalNet = totalPriceNoDiscount - totalCartDiscount;
+
       res.status(200).json({
          success: true,
          message: "This is your cart.",
@@ -211,7 +220,8 @@ exports.getUserCart = async (req, res) => {
          carts: cart,
          "Total price": cart.cartTotal,
          totalCartDiscount: totalCartDiscount,
-         totalPriceNoDiscount: totalPriceNoDiscount
+         totalPriceNoDiscount: totalPriceNoDiscount,
+         totalNet: totalNet
       });
    } catch (err) {
       console.log(err);
@@ -325,7 +335,30 @@ exports.saveOrder = async (req, res) => {
             .status(400)
             .json({ message: "Your cart is empty. Please add some product to a cart." });
 
-     
+      //3. Compare: product quantity in cart (userCart.products) vs  product quantity in stock (product.quantity)
+      let outStockProd = []; //เก็บ product ที่ไม่มี stock พอ
+      for (const item of userCart.products) {
+         const product = await prisma.product.findUnique({
+            where: { id: item.productId },
+            select: { quantity: true, title: true }
+         });
+         /*
+         item   { cartId: 15, productId: 5, count: 2, price: 40000 }
+         product{ quantity: 1000, title: 'Core i9-11800K' }
+         item   { cartId: 15, productId: 7, count: 10, price: 250 }
+         product{ quantity: 10, title: 'ขาหมูเยอรมัน' }
+         */
+         if (!product || item.count > product.quantity) {
+            outStockProd.push(product?.title || "product");
+         }
+      }
+      //4. if outStockProd.length > 0, return 400
+      if (outStockProd.length > 0) {
+         return res
+            .status(400)
+            .json({ message: `Sorry. Product: ${outStockProd.join(", ")} out of stock.` });
+      }
+
       //5. create new record in table Order + ProductOnOrder
       const convertToTHBforDB = parseFloat(amount) / 100;
       const order = await prisma.order.create({
@@ -385,6 +418,7 @@ exports.saveOrder = async (req, res) => {
       // await Promise.all([promise1, promise2, ...]) | when promise = {..}
       await Promise.all(updateProduct.map((promise) => prisma.product.update(promise)));
 
+      //** check anti-pattern ของการลบตาราง Cart อีกที */
       //6.3 ลบข้อมูลในตาราง ProductOnCart และ Cart ทั้งหมด
       // ติด onDelete: Cascade ในตาราง ProductOnCart.cartId ไว้ → ถ้าลบ record ในตาราง Cart จะลบ record ในตาราง ProductOnCart ด้วย
       await prisma.cart.deleteMany({
@@ -636,7 +670,7 @@ exports.favoriteProduct = async (req, res) => {
       //allow only 5 favorite/userId
       const isExceedLimit = await prisma.favorite.findMany({
          where: {
-            userId: id,
+            userId: id
          },
          take: 5 //LIMIT
       });
@@ -664,7 +698,7 @@ exports.favoriteProduct = async (req, res) => {
          }
       });
       console.log("existFav->", existFav);
-      if(existFav){
+      if (existFav) {
          //user send to unfav
          await prisma.favorite.delete({
             where: {
@@ -675,13 +709,13 @@ exports.favoriteProduct = async (req, res) => {
             success: true,
             message: `Removed ${existFav.product.title} from favorites`,
             isFavorited: false
-         })
-      }else{
+         });
+      } else {
          //user send to fav
          const newFav = await prisma.favorite.create({
             data: {
                userId: id,
-               productId: parseInt(productId),
+               productId: parseInt(productId)
             },
             select: {
                product: {
@@ -695,9 +729,8 @@ exports.favoriteProduct = async (req, res) => {
             success: true,
             message: `Added ${newFav.product.title} to favorites`,
             isFavorited: true
-         })
+         });
       }
-      
    } catch (error) {
       console.log(error);
       res.status(500).json({ message: "Server Error" });

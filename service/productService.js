@@ -1,5 +1,6 @@
 const prisma = require("../config/prisma");
 const cloudinary = require("cloudinary").v2; // import { v2 as cloudinary } from 'cloudinary';
+// import { v2 as cloudinary } from 'cloudinary';
 
 exports.createProd = async (req, res) => {
    try {
@@ -42,36 +43,113 @@ exports.createProd = async (req, res) => {
    }
 };
 
+// --- SSE & Stock Logic ---
+let clients = [];
+
+// Helper to send events to all connected clients
+const notifyClients = (data) => {
+   clients.forEach((client) => {
+      client.res.write(`data: ${JSON.stringify(data)}\n\n`);
+   });
+};
+
+exports.subscribeStock = (req, res) => {
+   const headers = {
+      "Content-Type": "text/event-stream",
+      Connection: "keep-alive",
+      "Cache-Control": "no-cache"
+   };
+   res.writeHead(200, headers);
+
+   const clientId = Date.now();
+   const newClient = {
+      id: clientId,
+      res
+   };
+   clients.push(newClient);
+
+   req.on("close", () => {
+      console.log(`${clientId} Connection closed`);
+      clients = clients.filter((client) => client.id !== clientId);
+   });
+};
+
+exports.getStock = async (req, res) => {
+   try {
+      const { id } = req.params;
+      const product = await prisma.product.findUnique({
+         where: { id: parseInt(id) },
+         select: {
+            id: true,
+            quantity: true,
+            price: true,
+            promotion: true
+         }
+      });
+
+      if (!product) {
+         return res.status(404).json({ message: "Product not found" });
+      }
+
+      res.json(product);
+   } catch (err) {
+      console.log(err);
+      res.status(500).json({ message: "Server Error" });
+   }
+};
+// -------------------------
 const updateDiscount = async () => {
    try {
       //auto check and update expired seasonal discount everytime frontend fetch product
       //use UTC time
       const now = new Date();
-      const expiredDiscounts = await prisma.discount.findMany({
+      const result = await prisma.discount.updateMany({
          where: {
             endDate: { lt: now }, //if endDate gte now → not expired
             isActive: true
+         },
+         data: {
+            isActive: false
          }
       });
-      // console.log('new date',new Date())
-      // console.log("now", now);
-      console.log("expiredDiscounts", expiredDiscounts);
-      // Reset expired discounts
-      if (expiredDiscounts.length > 0) {
-         await prisma.discount.updateMany({
-            where: {
-               id: {
-                  in: expiredDiscounts.map((d) => d.id)
-               }
-            },
-            data: {
-               isActive: false
-            }
-         });
+
+      if (result.count > 0) {
+         console.log(`Expired discounts deactivated: ${result.count}`);
       }
    } catch (err) {
       console.log(err);
    }
+};
+
+// คำนวณ buyPriceNum และ preferDiscount สำหรับแต่ละ product
+const calculateProductDiscount = (product) => {
+   let buyPriceNum = product.price;
+   let preferDiscount = null;
+
+   // ตรวจสอบ discount ที่ยังใช้งานได้
+   const today = new Date();
+   let discountAmount = null;
+
+   if (product.discounts && product.discounts.length > 0) {
+      const discount = product.discounts[0];
+      const startDate = new Date(discount.startDate);
+      const endDate = new Date(discount.endDate);
+
+      if (discount.isActive && today >= startDate && today < endDate) {
+         discountAmount = discount.amount;
+      }
+   }
+
+   // เปรียบเทียบ promotion vs discount → ใช้ตัวที่มากกว่า
+   if (product.promotion > discountAmount) {
+      preferDiscount = product.promotion;
+      buyPriceNum = product.price * (1 - product.promotion / 100);
+   } else if (discountAmount) {
+      preferDiscount = discountAmount;
+      buyPriceNum = product.price * (1 - discountAmount / 100);
+   }
+
+   return { buyPriceNum, preferDiscount };
 };
 
 exports.listProd = async (req, res) => {
@@ -112,7 +190,18 @@ exports.listProd = async (req, res) => {
          }
       });
 
-      res.send(products);
+      // คำนวณ buyPriceNum และ preferDiscount สำหรับแต่ละ product
+      const productsWithDiscount = [];
+      for (const product of products) {
+         const { buyPriceNum, preferDiscount } = calculateProductDiscount(product);
+         productsWithDiscount.push({
+            ...product,
+            buyPriceNum,
+            preferDiscount
+         });
+      }
+
+      res.send(productsWithDiscount);
    } catch (err) {
       console.log(err);
       res.status(500).json({ message: "Server Error" });
@@ -181,7 +270,8 @@ exports.readAprod = async (req, res) => {
          }
       });
       //cal percent of ratings from 1 to 5
-      // const { ratings } = aProduct;
+      //cal percent dominant of ratings 1 to 5
+      const ratingArr = aProduct.ratings;
       let score1 = 0,
          score2 = 0,
          score3 = 0,
@@ -192,8 +282,10 @@ exports.readAprod = async (req, res) => {
          percent3 = 0,
          percent4 = 0,
          percent5 = 0;
-      if (aProduct.ratings.length > 0) {
-         for (const ratings of aProduct.ratings) {
+      // ประกาศ rateArrLen นอก if block เพื่อใช้ใน response
+      const rateArrLen = ratingArr.length;
+      if (ratingArr.length > 0) {
+         for (const ratings of ratingArr) {
             if (ratings?.rating === 5) {
                score5++;
             } else if (ratings?.rating === 4) {
@@ -206,21 +298,27 @@ exports.readAprod = async (req, res) => {
                score1++;
             }
          }
+         percent5 = score5 > 0 ? (score5 / rateArrLen) * 100 : 0;
+         percent4 = score4 > 0 ? (score4 / rateArrLen) * 100 : 0;
+         percent3 = score3 > 0 ? (score3 / rateArrLen) * 100 : 0;
+         percent2 = score2 > 0 ? (score2 / rateArrLen) * 100 : 0;
+         percent1 = score1 > 0 ? (score1 / rateArrLen) * 100 : 0;
 
-         percent5 = score5 > 0 ? (score5 / aProduct.ratings?.length) * 100 : 0;
-         percent4 = score4 > 0 ? (score4 / aProduct.ratings?.length) * 100 : 0;
-         percent3 = score3 > 0 ? (score3 / aProduct.ratings?.length) * 100 : 0;
-         percent2 = score2 > 0 ? (score2 / aProduct.ratings?.length) * 100 : 0;
-         percent1 = score1 > 0 ? (score1 / aProduct.ratings?.length) * 100 : 0;
-
-         // const totalRating = aProduct.ratings.reduce((acc, curr) => acc + curr.rating, 0);
-         // aProduct.ratingPercent = (totalRating / aProduct.ratings.length) * 100;
+         // const totalRatingCount = ratingArr.reduce((acc, curr) => acc + curr.rating, 0);
+         // aProduct.ratingPercent = (totalRatingCount / rateArrLen) * 100;
       }
+      // คำนวณ buyPriceNum และ preferDiscount
+      const { buyPriceNum, preferDiscount } = calculateProductDiscount(aProduct);
+
       res.status(200).json({
          success: true,
-         data: aProduct,
+         data: {
+            ...aProduct,
+            buyPriceNum,
+            preferDiscount
+         },
          prodOnOrder: prodOnOrder,
-         globalRatingCount: aProduct.ratings.length,
+         globalRatingCount: rateArrLen,
          ratingInfo: {
             score1,
             score2,
@@ -332,6 +430,17 @@ exports.updateProd = async (req, res) => {
          }
       });
 
+      // Notify clients about the update
+      notifyClients({
+         type: "UPDATE_PRODUCT",
+         productId: product.id,
+         data: {
+            quantity: product.quantity,
+            price: product.price,
+            promotion: product.promotion
+         }
+      });
+
       res.status(200).json({
          success: true,
          data: product
@@ -366,7 +475,7 @@ exports.removeProd = async (req, res) => {
       });
 
       /*
-      roductToRm.images === [
+      productToRm.images === [
                               {
                               "id": 900,
                               "asset_id": "788964f30ee2768df55f6539c039f649",
@@ -432,9 +541,21 @@ exports.displayProdBy = async (req, res) => {
             brand: true
          }
       });
+
+      // คำนวณ buyPriceNum และ preferDiscount สำหรับแต่ละ product
+      const productsWithDiscount = [];
+      for (const product of products) {
+         const { buyPriceNum, preferDiscount } = calculateProductDiscount(product);
+         productsWithDiscount.push({
+            ...product,
+            buyPriceNum,
+            preferDiscount
+         });
+      }
+
       res.status(200).json({
          success: true,
-         data: products
+         data: productsWithDiscount
       });
    } catch (err) {
       console.log(err);
@@ -518,7 +639,17 @@ exports.displayProdByUser = async (req, res) => {
          });
 
          // Store directly in the grouped format
-         recomProdsInCat[catId] = products;
+         // คำนวณ buyPriceNum และ preferDiscount สำหรับแต่ละ product
+         const productsWithDiscount = [];
+         for (const product of products) {
+            const { buyPriceNum, preferDiscount } = calculateProductDiscount(product);
+            productsWithDiscount.push({
+               ...product,
+               buyPriceNum,
+               preferDiscount
+            });
+         }
+         recomProdsInCat[catId] = productsWithDiscount;
       }
       //recomProdArr===[{prod1},{prod2}]
       const recomProdArr = Object.values(recomProdsInCat).flat();
@@ -613,14 +744,25 @@ exports.searchFilters = async (req, res) => {
          }
       });
 
-      res.send(products);
+      // คำนวณ buyPriceNum และ preferDiscount สำหรับแต่ละ product
+      const productsWithDiscount = [];
+      for (const product of products) {
+         const { buyPriceNum, preferDiscount } = calculateProductDiscount(product);
+         productsWithDiscount.push({
+            ...product,
+            buyPriceNum,
+            preferDiscount
+         });
+      }
+
+      res.send(productsWithDiscount);
    } catch (err) {
       console.log(err);
       res.status(500).json({ message: "Server Error" });
    }
 };
 
-// mange image file on cloudinary ONLY !!!
+// manage image file on cloudinary ONLY !!!
 cloudinary.config({
    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
    api_key: process.env.CLOUDINARY_API_KEY,
@@ -796,6 +938,18 @@ exports.bulkDiscount = async (req, res) => {
       }
       let result = await Promise.allSettled(promises);
       console.log("result promise all-->", result);
+      // Notify clients about bulk update (simplified: just tell them to refresh or send specific IDs if possible)
+      // For now, we'll send a generic update or list of IDs if we tracked them.
+      // Since we have `products` array with IDs:
+      notifyClients({
+         type: "BULK_UPDATE",
+         productIds: products.map((p) => p.id),
+         // In a real app, you might want to fetch the fresh data for these IDs and send it,
+         // or just let the client re-fetch.
+         // Sending the new promotion/discount info:
+         promotion: isPromotion ? amount : undefined,
+         discount: !isPromotion ? { amount, startDate, endDate } : undefined
+      });
       return res.status(200).json({
          message: `Discount applied on ${products.length} products successfully`
       });
@@ -816,7 +970,7 @@ Need req.body:
 exports.changeStatusDiscount = async (req, res) => {
    try {
       const { productIdArr, status } = req.body;
-      const result = await prisma.discount.updateMany({
+      await prisma.discount.updateMany({
          where: { productId: { in: productIdArr } },
          data: { isActive: status }
       });

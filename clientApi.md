@@ -32,6 +32,8 @@
 | `/api/bulk-discount`               | POST   | Manage product promotion | `{ "products":[ { "id":1, "title":"LG Laptop" }, { "id":2,..} ], "amount":10, "startDate":"2025-01-17T21:58:44.063Z", "endDate":"2025-02-17T21:58:44.063Z", "description":"New year sale", "isPromotion":false }` or `{ "products":[ { "id":1, "title":"LG Laptop" }, { "id":2,..} ], "amount":10, "startDate":"2025-01-17T21:58:44.063Z", "endDate":"2025-01-17T21:58:44.063Z", "description":"", "isPromotion":true }`       |
 | `/api/images`                       | POST | Upload image to the cloud service   |  `{"image": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/..."}`  |
 | `/api/removeimage`                  | POST | Remove image from the clound service  |  `{"public_id": "Ecom_fullstack_app_msc_products/product-173..."}`  |
+| `/api/product/stock/:id`            | GET  | Get product stock info by ID          | None |
+| `/api/product/sse`                  | GET  | Subscribe to real-time stock updates (SSE) | None |
 
 ## User
 

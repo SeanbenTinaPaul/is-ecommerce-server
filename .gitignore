@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 .env
 server/util/tempCode.js
+
+# Agent Rules
+AGENTS.md
