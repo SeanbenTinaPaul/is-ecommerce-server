@@ -179,13 +179,7 @@ exports.getUserCart = async (req, res) => {
       if (!cart) {
          return res.status(200).json({
             success: true,
-            message: "No cart yet.",
-            ProductOnCart: [],
-            carts: null,
-            "Total price": 0,
-            totalCartDiscount: 0,
-            totalPriceNoDiscount: 0,
-            totalNet: 0
+            message: "No cart yet."
          });
       }
       //need to validate promotion vs discount → discount needs: isActive, startDate, endDate
