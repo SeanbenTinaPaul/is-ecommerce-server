@@ -161,7 +161,7 @@ exports.listProd = async (req, res) => {
       //findMany === SELECT * from TableName
       //take === LIMIT
       const { count } = req.params;
-      const { leastStock } = req.body;
+      const { leastStock } = req.query;
       console.log("leastStock->", leastStock);
       const products = await prisma.product.findMany({
          where: {

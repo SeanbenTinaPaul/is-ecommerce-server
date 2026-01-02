@@ -15,6 +15,14 @@ exports.createPayment = async (req, res) => {
       });
       console.log("cart for payment->", cart);
 
+      // Check if cart exists
+      if (!cart) {
+         return res.status(400).json({
+            success: false,
+            message: "No cart found. Please add items to cart before payment."
+         });
+      }
+
       const convertToTHBforCloud = parseInt((cart.cartTotal * 100));
       // Create a PaymentIntent with the order amount and currency
       //ต้องเรียก api นี้จึงจะ display <Elements> ใน PaymentMethod.jsx
@@ -136,8 +144,11 @@ exports.reqRefund = async (req, res) => {
       res.status(200).json({
          success: true,
          message: "Refund Success.",
-         confirmEmail: refund.next_action.display_details.email_sent.email_sent_to,
-         expireAT: refund.next_action.display_details.expires_at,
+         refundId: refund.id,
+         refundStatus: refund.status,
+         refundAmount: refund.amount / 100, // Convert back to THB
+         confirmEmail: refund.next_action?.display_details?.email_sent?.email_sent_to || null,
+         expireAT: refund.next_action?.display_details?.expires_at || null,
 
          // data: refund
       });
