@@ -846,98 +846,42 @@ exports.bulkDiscount = async (req, res) => {
    // console.log("req.user to handleBulkDiscount", req.user);
    // console.log("isPromotion", isPromotion);
    try {
-      //need to replace the old discounts with new discounts
-      const existProdWithDiscounts = await prisma.product.findMany({
-         where: {
-            id: {
-               in: products.map((obj) => obj.id)
-            }
-         },
-         include: {
-            discounts: true
-         }
-      });
-      console.log("existProdWithDiscounts-->", existProdWithDiscounts);
-
-      //Make: existProdWithDiscounts[i].discounts===[ [], [{productId,..}] ,[{productId...}] ] → [{productId},{productId}]
-      //Way2: let existingDiscount = existProdWithDiscounts.map((d) => d.discounts).flat();
-      let existingDiscount = [].concat(...existProdWithDiscounts.map((obj) => obj.discounts));
-      console.log("existingDiscount-->", existingDiscount);
-
-      let prodToCreate = [];
-      let prodToUpdate = products.filter((obj) => {
-         //execute anyway since loop through existProdWithDiscounts, length always > 0
-         for (let i = 0; i < existProdWithDiscounts.length; i++) {
-            if (existingDiscount.length > 0 && obj.id === existingDiscount[i].productId) {
-               return true;
-            } else {
-               prodToCreate.push(obj);
-               return false;
-            }
-         }
-      });
-      console.log("prodToCreate-->", prodToCreate);
-      console.log("prodToUpdate-->", prodToUpdate);
-      const promises = [];
+      const productIds = products.map((obj) => obj.id);
+      
       //if isPromotion === true → update col promotion in Product and go to res.status(200)
       if (isPromotion) {
          //อัพเดตฟิลด์ promotion ในตาราง Product
-         promises.push(
-            prisma.product.updateMany({
-               where: {
-                  id: {
-                     in: products.map((obj) => obj.id)
-                  }
-               },
-               data: {
-                  promotion: amount
-               }
-            })
-         );
+         await prisma.product.updateMany({
+            where: {
+               id: { in: productIds }
+            },
+            data: {
+               promotion: amount
+            }
+         });
       } else {
-         // update existing discounts และสร้าง new discounts พร้อมกัน
-         // Validate dates | .getTime() จะ returns the number of milliseconds since January 1, 1970, 00:00:00 UTC
-         // if (isNaN(parsedStartDate.getTime()) || isNaN(parsedEndDate.getTime())) {
-         //    return res.status(400).json({ error: "Invalid date format" });
-         // }
+         // Step 1: Delete all existing discounts for the selected products
+         await prisma.discount.deleteMany({
+            where: {
+               productId: { in: productIds }
+            }
+         });
+         console.log("Deleted old discounts for products:", productIds);
 
-         if (prodToUpdate.length > 0) {
-            promises.push(
-               prisma.discount.updateMany({
-                  where: {
-                     productId: {
-                        in: prodToUpdate.map((obj) => obj.id)
-                     }
-                  },
-                  data: {
-                     amount: amount,
-                     startDate: new Date(startDate),
-                     endDate: new Date(endDate),
-                     description: description,
-                     isActive: true,
-                     createdBy: email
-                  }
-               })
-            );
-         }
-         if (prodToCreate.length > 0) {
-            promises.push(
-               prisma.discount.createMany({
-                  data: prodToCreate.map((obj) => ({
-                     productId: obj.id,
-                     amount: amount,
-                     startDate: new Date(startDate),
-                     endDate: new Date(endDate),
-                     description: description,
-                     isActive: true,
-                     createdBy: email
-                  }))
-               })
-            );
-         }
+         // Step 2: Create new discounts for all selected products
+         await prisma.discount.createMany({
+            data: productIds.map((id) => ({
+               productId: id,
+               amount: amount,
+               startDate: new Date(startDate),
+               endDate: new Date(endDate),
+               description: description,
+               isActive: true,
+               createdBy: email
+            }))
+         });
+         console.log("Created new discounts for products:", productIds);
       }
-      let result = await Promise.allSettled(promises);
-      console.log("result promise all-->", result);
       // Notify clients about bulk update (simplified: just tell them to refresh or send specific IDs if possible)
       // For now, we'll send a generic update or list of IDs if we tracked them.
       // Since we have `products` array with IDs:
