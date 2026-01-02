@@ -235,8 +235,8 @@ exports.clearCart = async (req, res) => {
          where: { orderedById: Number(id) }
       });
       console.log("clearCart->", cart);
-      //2. ถ้าไม่มีให้ return 400
-      if (!cart) return res.status(400).json({ message: "No cart found." });
+      //2. ถ้าไม่มี cart ใน DB ก็ถือว่า cart ว่างอยู่แล้ว → return 200
+      if (!cart) return res.status(200).json({ success: true, message: "Cart is already empty."
 
       //3. ถ้ามีให้ลบข้อมูลในตาราง ProductOnCart และ Cart ทั้งหมด
       const delCart = await prisma.$transaction(async (prisma) => {
