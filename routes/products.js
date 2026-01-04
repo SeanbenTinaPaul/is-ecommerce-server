@@ -15,8 +15,10 @@ const {
    removeImage,
    bulkDiscount,
    getStock,
-   subscribeStock
+   subscribeStock,
+   getProductImages
 } = require("../service/productService");
+
 const { userVerify, adminVerify } = require("../middlewares/authVerify");
 
 //ENDPOINT: http://localhost:5000/api/product
@@ -24,6 +26,7 @@ const { userVerify, adminVerify } = require("../middlewares/authVerify");
 // 'api/products/100?leastStock=0'
 router.get("/products/:count", listProd); //view product records according to count numbers
 router.get("/product/:id", readAprod); //for FormEditProd.jsx → readProduct(token, id,)
+router.get("/product/:id/images", getProductImages); //for CarouselBanner.jsx → lightweight images only
 
 //write
 router.post("/product", userVerify, adminVerify, createProd);

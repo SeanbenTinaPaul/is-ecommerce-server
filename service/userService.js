@@ -362,8 +362,9 @@ exports.saveOrder = async (req, res) => {
                create: userCart.products.map((item) => ({
                   productId: item.productId,
                   count: item.count,
-                  price: item.buyPriceNum,
-                  discount: (item.price * item.discount) / 100
+                  price: item.buyPriceNum,//ราคา 1 ชิ้นหลังหักส่วนลด
+                  discount: (item.price * item.discount) / 100//ราคาส่วนลด 1 ชิ้น (ไม่ใช่ %)
+                  // (price + discount) * count == ราคารวมแบบไม่มีส่วนลด
                }))
             },
             //connect คือไปดึง record ของ User.id(มีอยู่แล้ว) มาเติมใน record ตัวเอง
@@ -376,9 +377,9 @@ exports.saveOrder = async (req, res) => {
                   id: Number(req.user.id) //=== id: userCart.orderedById
                }
             },
-            cartTotal: userCart.cartTotal, // Ensure cartTotal is included here
+            cartTotal: userCart.cartTotal, // ราคาหลังหักส่วนลด * จำนวนชิ้น
             paymentId: id,
-            amount: convertToTHBforDB,
+            amount: convertToTHBforDB, // ราคาหลังหักส่วนลด * จำนวนชิ้น | ควรเท่ากันกับ cartTotal
             status: status,
             currency: currency,
             orderStatus: "Completed"
@@ -393,7 +394,7 @@ exports.saveOrder = async (req, res) => {
       /*
        กระบวนการ:
        - ถ้า create ในตาราง Order แล้วก็ต้องลบในตาราง Cart และ ProductOnCart
-       - ในตาราง Product ต้องลบจำนวนสินค้าที่สั่งออกไปจาก stock
+       - ในตาราง Product ต้องลบจำนวนสินค้าที่ถูกสั่งซื้อออกจาก stock
        */
       //6.1 เตรียมข้อมูลสำหรับ update จำนวนสินค้าในตาราง Product.sold และ Product.quantity
       const updateProduct = userCart.products.map((item) => ({

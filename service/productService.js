@@ -98,6 +98,37 @@ exports.getStock = async (req, res) => {
    }
 };
 // -------------------------
+
+// Get only product images (for CarouselBanner)
+exports.getProductImages = async (req, res) => {
+   try {
+      const { id } = req.params;
+      const product = await prisma.product.findUnique({
+         where: { id: parseInt(id) },
+         select: {
+            images: {
+               select: {
+                  id: true,
+                  url: true
+               }
+            }
+         }
+      });
+
+      if (!product) {
+         return res.status(404).json({ message: "Product not found" });
+      }
+
+      res.json({
+         success: true,
+         data: product.images
+      });
+   } catch (err) {
+      console.log(err);
+      res.status(500).json({ message: "Server Error" });
+   }
+};
+
 const updateDiscount = async () => {
    try {
       //auto check and update expired seasonal discount everytime frontend fetch product
@@ -220,10 +251,18 @@ exports.readAprod = async (req, res) => {
             id: parseInt(id)
          },
          //include === JOIN
-         //เพิ่มเพื่อดึงข้อมูลจากตาราง category...
+         //เลือกเฉพาะคอลัมน์ที่ใช้จริงเพื่อลด payload
          include: {
-            category: true,
-            discounts: true,
+            // ❌ category: true - ไม่ได้ใช้ใน frontend
+            discounts: {
+               select: {
+                  startDate: true,
+                  endDate: true,
+                  isActive: true,
+                  amount: true
+               }
+            },
+            // images ใช้ full fields สำหรับ admin edit (asset_id, public_id, secure_url)
             images: true,
             ratings: {
                orderBy: {
@@ -231,7 +270,10 @@ exports.readAprod = async (req, res) => {
                      createdAt: "desc"
                   }
                },
-               include: {
+               select: {
+                  rating: true,
+                  comment: true,
+                  orderId: true,
                   user: {
                      select: {
                         name: true,
@@ -239,19 +281,22 @@ exports.readAprod = async (req, res) => {
                      }
                   }
                }
-               // orderBy: { createdAt: "desc" }
             },
-            brand: true,
-            favorites: true
-            // orderItems: true
-            /*
-                model Product {
-                    category Category? @relation(fields: [categoryId], references: [id])  // Points to one category
-                    images   Image[]  // Has many images
-                }
-                */
+            brand: {
+               select: {
+                  img_url: true,
+                  title: true
+               }
+            },
+            favorites: {
+               select: {
+                  userId: true,
+                  productId: true
+               }
+            }
          }
       });
+
       const prodOnOrder = await prisma.productOnOrder.findMany({
          where: {
             productId: parseInt(id)
