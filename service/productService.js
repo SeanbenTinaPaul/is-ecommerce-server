@@ -36,7 +36,8 @@ exports.createProd = async (req, res) => {
          }
       });
 
-      res.send(product);
+      // Frontend ใช้แค่ title สำหรับ toast notification
+      res.send({ title: product.title });
    } catch (err) {
       console.log(err);
       res.status(500).json({ message: "Server Error" });
