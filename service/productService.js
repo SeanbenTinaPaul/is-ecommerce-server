@@ -536,9 +536,10 @@ exports.updateProd = async (req, res) => {
          }
       });
 
+      // Frontend ใช้แค่ success และ title สำหรับ toast notification
       res.status(200).json({
          success: true,
-         data: product
+         data: { title: product.title }
       });
       // res.send(product);
    } catch (err) {
@@ -602,10 +603,11 @@ exports.removeProd = async (req, res) => {
       }
       */
 
+      // Frontend ใช้แค่ title สำหรับ toast notification
       res.status(200).json({
          success: true,
          message: "Remove success",
-         data: productToRm
+         data: { title: productToRm.title }
       });
    } catch (err) {
       console.log(err);
