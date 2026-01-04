@@ -5,6 +5,7 @@ const router = express.Router();
 const {
    createProd,
    listProd,
+   listProdAdmin,
    readAprod,
    updateProd,
    removeProd,
@@ -24,7 +25,8 @@ const { userVerify, adminVerify } = require("../middlewares/authVerify");
 //ENDPOINT: http://localhost:5000/api/product
 //read
 // 'api/products/100?leastStock=0'
-router.get("/products/:count", listProd); //view product records according to count numbers
+router.get("/products/:count", listProd); //for Guest/User
+router.get("/products-admin/:count", listProdAdmin); //for Admin
 router.get("/product/:id", readAprod); //for FormEditProd.jsx → readProduct(token, id,)
 router.get("/product/:id/images", getProductImages); //for CarouselBanner.jsx → lightweight images only
 

@@ -183,41 +183,90 @@ const calculateProductDiscount = (product) => {
    return { buyPriceNum, preferDiscount };
 };
 
-exports.listProd = async (req, res) => {
-   // console.log("req to list", req);
-   // console.log("req.user to list", req.user);//undefined when NO <token> sent in req.header
+// =================== LIST PRODUCTS ===================
+
+// สำหรับ Admin (leastStock=0) - ใช้ใน FormPromotion, FormProduct, TableListProducts
+exports.listProdAdmin = async (req, res) => {
    try {
       await updateDiscount();
-      //----------------------------------------------------------------------------
-      //findMany === SELECT * from TableName
-      //take === LIMIT
+      const { count } = req.params;
+      
+      const products = await prisma.product.findMany({
+         take: parseInt(count),
+         orderBy: {
+            createdAt: "desc"
+         },
+         // Admin ต้องการ: id, title, price, brandId, categoryId, promotion, discounts, images
+         include: {
+            discounts: {
+               select: {
+                  amount: true,
+                  startDate: true,
+                  endDate: true,
+                  isActive: true
+               }
+            },
+            images: {
+               select: {
+                  id: true,
+                  url: true
+               }
+            }
+         }
+      });
+
+      // Admin ไม่จำเป็นต้องคำนวณ buyPriceNum (ใช้สำหรับ cart เท่านั้น)
+      res.send(products);
+   } catch (err) {
+      console.log(err);
+      res.status(500).json({ message: "Server Error" });
+   }
+};
+
+// สำหรับ Guest/User (leastStock≥1) - ใช้ใน Shop, ShopUser, CardProd
+exports.listProd = async (req, res) => {
+   try {
+      await updateDiscount();
       const { count } = req.params;
       const { leastStock } = req.query;
-      console.log("leastStock->", leastStock);
+      
       const products = await prisma.product.findMany({
          where: {
-            quantity: { gte: parseInt(leastStock) }
+            quantity: { gte: parseInt(leastStock) || 1 }
          },
          take: parseInt(count),
          orderBy: {
             createdAt: "desc"
          },
-         //include === JOIN
-         //เพิ่มเพื่อดึงข้อมูลจากตาราง category
+         // Guest/User ต้องการ: id, title, price, sold, promotion, avgRating, images, brand, discounts, favorites
+         // ❌ ไม่ต้องการ: category, ratings (ใช้แค่ avgRating), brandId, categoryId
          include: {
-            category: true,
-            images: true,
-            discounts: true,
-            favorites: true,
-            ratings: true,
-            brand: true
-
-            /*
-                model Product {
-                    category Category? @relation(fields: [categoryId], references: [id])  // Points to one category
-                    images   Image[]  // Has many images
-                }
-                */
+            images: {
+               select: {
+                  url: true
+               },
+               take: 1  // แค่รูปแรก
+            },
+            brand: {
+               select: {
+                  img_url: true,
+                  title: true
+               }
+            },
+            discounts: {
+               select: {
+                  amount: true,
+                  startDate: true,
+                  endDate: true,
+                  isActive: true
+               }
+            },
+            favorites: {
+               select: {
+                  userId: true,
+                  productId: true
+               }
+            }
          }
       });
 
