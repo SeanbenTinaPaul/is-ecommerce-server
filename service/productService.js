@@ -1033,7 +1033,7 @@ exports.bulkDiscount = async (req, res) => {
          // or just let the client re-fetch.
          // Sending the new promotion/discount info:
          promotion: isPromotion ? amount : undefined,
-         discount: !isPromotion ? { amount, startDate, endDate } : undefined
+         discount: !isPromotion ? { amount, startDate, endDate, isActive: true } : undefined
       });
       return res.status(200).json({
          message: `Discount applied on ${products.length} products successfully`
