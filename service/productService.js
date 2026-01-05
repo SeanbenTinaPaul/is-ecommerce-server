@@ -629,13 +629,35 @@ exports.displayProdBy = async (req, res) => {
          },
          take: limit,
          orderBy: { [sort]: order },
+         // ใช้ใน BestSeller.jsx, NewProd.jsx → CardProd.jsx
+         // ❌ ไม่ต้องการ: category, ratings (แค่ avgRating)
          include: {
-            category: true,
-            images: true,
-            discounts: true,
-            favorites: true,
-            ratings: true,
-            brand: true
+            images: {
+               select: {
+                  url: true
+               },
+               take: 1  // แค่รูปแรก
+            },
+            brand: {
+               select: {
+                  img_url: true,
+                  title: true
+               }
+            },
+            discounts: {
+               select: {
+                  amount: true,
+                  startDate: true,
+                  endDate: true,
+                  isActive: true
+               }
+            },
+            favorites: {
+               select: {
+                  userId: true,
+                  productId: true
+               }
+            }
          }
       });
 
@@ -725,13 +747,35 @@ exports.displayProdByUser = async (req, res) => {
             orderBy: {
                updatedAt: "desc"
             },
+            // ใช้ใน UserFavprod.jsx → CardProd.jsx
+            // ไม่ต้องการ: category, ratings (แค่ avgRating)
             include: {
-               category: true,
-               images: true,
-               discounts: true,
-               favorites: true,
-               ratings: true,
-               brand: true
+               images: {
+                  select: {
+                     url: true
+                  },
+                  take: 1
+               },
+               brand: {
+                  select: {
+                     img_url: true,
+                     title: true
+                  }
+               },
+               discounts: {
+                  select: {
+                     amount: true,
+                     startDate: true,
+                     endDate: true,
+                     isActive: true
+                  }
+               },
+               favorites: {
+                  select: {
+                     userId: true,
+                     productId: true
+                  }
+               }
             }
          });
 
