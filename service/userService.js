@@ -4,66 +4,102 @@ const jwt = require("jsonwebtoken"); //ใช้ในการสร้าง t
 
 //ข้อมูลการสั่งซื้อในตะกร้าของ users
 //Feature/Button: "Add to Cart", "Update Cart", "Save Cart"
+//Refactored: ใช้ upsert แทน delete-all + create-all เพื่อลด I/O
 exports.createUserCart = async (req, res) => {
    try {
       const carts = req.body.carts;
-      // console.log("req.body carts->", req.body.carts);
       console.log("carts->", carts); // [{id:, countCart:, price:, buyPriceNum:,preferDiscount,promotion:,discounts: [ [Object] ]}, {}]
-      //1. check ว่า user มีข้อมมูลอยู่ในตาราง User หรือไม่
+
+      //1. check ว่า user มีข้อมูลอยู่ในตาราง User หรือไม่
       const user = await prisma.user.findFirst({
          where: { id: Number(req.user.id) }
       });
-      //3. Compare: product quantity in cart (userCart.products) vs  product quantity in stock (product.quantity)
-      let outStockProd = {}; //เก็บ product ที่ไม่มี stock พอ
+
+      //2. Compare: product quantity in cart vs product quantity in stock
+      let outStockProd = {};
       for (const item of carts) {
          const product = await prisma.product.findUnique({
             where: { id: item.id },
             select: { quantity: true, title: true }
          });
-         /*
-          item   { cartId: 15, productId: 5, countCart: 2, price: 40000 }
-          product{ quantity: 1000, title: 'Core i9-11800K' }
-          item   { cartId: 15, productId: 7, countCart: 10, price: 250 }
-          product{ quantity: 10, title: 'ขาหมูเยอรมัน' }
-          */
          if (!product || item.countCart > product.quantity) {
-            // outStockProd.push(`${product?.title || 'product'} Stock:${product.quantity}`);
-            outStockProd[product?.title] = product.quantity;
+            outStockProd[product?.title] = product?.quantity;
          }
       }
       console.log("outStockProd->", outStockProd);
       const outStockProdArr = Object.entries(outStockProd);
       const outStockTitle = Object.keys(outStockProd);
-      //4. if outStockProd.length > 0, return 400
+
       if (outStockProdArr.length > 0) {
          return res.status(202).json({
             message: `${outStockTitle} currently low in stock. Please remove or adjust quantity to proceed with the checkout.`,
             stock: outStockProdArr
          });
       }
-      //2. Delete old cart to INSERT new cart
-      //table'ProductOnCart' เป็นตารางกลางระหว่าง 'Product' กับ 'Cart'
-      /*
-          DELETE FROM "ProductOnCart"
-              WHERE "cartId" IN (
-              SELECT "id" FROM "Cart" 
-              WHERE "orderedById" = user.id
-              );
-          */
+
+      //3. Find or Create Cart for this user
+      let cart = await prisma.cart.findFirst({
+         where: { orderedById: user.id }
+      });
+
+      //4. คำนวณ cartTotal
+      let cartTotal = carts.reduce((sum, item) => {
+         return sum + item.buyPriceNum * item.countCart;
+      }, 0);
+
+      if (!cart) {
+         // สร้าง Cart ใหม่ถ้ายังไม่มี
+         cart = await prisma.cart.create({
+            data: {
+               cartTotal: cartTotal,
+               orderedById: user.id
+            }
+         });
+      } else {
+         // Update cartTotal ถ้ามี Cart อยู่แล้ว
+         await prisma.cart.update({
+            where: { id: cart.id },
+            data: { cartTotal: cartTotal }
+         });
+      }
+
+      //5. Upsert แต่ละ ProductOnCart
+      const productIdsInRequest = carts.map((item) => item.id);
+      const upsertPromises = carts.map((item) =>
+         prisma.productOnCart.upsert({
+            where: {
+               cartId_productId: {
+                  cartId: cart.id,
+                  productId: item.id
+               }
+            },
+            update: {
+               count: item.countCart,
+               price: item.price,
+               buyPriceNum: item.buyPriceNum,
+               discount: item.preferDiscount
+            },
+            create: {
+               cartId: cart.id,
+               productId: item.id,
+               count: item.countCart,
+               price: item.price,
+               buyPriceNum: item.buyPriceNum,
+               discount: item.preferDiscount
+            }
+         })
+      );
+      await Promise.all(upsertPromises);
+
+      //6. ลบ ProductOnCart ที่ถูกลบออกจากตะกร้า (items ที่ไม่อยู่ใน request)
       await prisma.productOnCart.deleteMany({
          where: {
-            //cart หมายถึง เอา productOnCart.cartId ซึ่งเท่ากับ Cart.id, เมื่อพบว่า Cart.orderedById เท่ากับ user.id
-            cart: { orderedById: user.id }
-         }
-      });
-      await prisma.cart.deleteMany({
-         where: {
-            orderedById: user.id
+            cartId: cart.id,
+            productId: { notIn: productIdsInRequest }
          }
       });
 
-      //3. เตรียมสินค้าใหม่สำหรับ insert ลงในตาราง ProductOnCart[]
-      //req.body.cart ===[{},{},...]
+      //7. เตรียมข้อมูลสำหรับ response
       let products = carts.map((item) => ({
          productId: item.id,
          count: item.countCart,
@@ -72,28 +108,11 @@ exports.createUserCart = async (req, res) => {
          discount: item.preferDiscount
       }));
 
-      //4. หาราคารวมของสินค้าในตะกร้า ลงในตาราง Cart
-      let cartTotal = products.reduce((sum, item) => {
-         return sum + item.buyPriceNum * item.count;
-      }, 0);
-
-      //5. Insert ข้อมูลลงในตาราง Cart
-      //data: === INSERT INTO Cart (products, cartTotal, orderById) VALUES (products, cartTotal, orderById)
-      // products is ProductOnCart[] in Model Cart
-      const newCart = await prisma.cart.create({
-         data: {
-            products: {
-               create: products //add products to ProductOnCart[]
-            },
-            cartTotal: cartTotal, //add to Cart.cartTotal
-            orderedById: user.id //add to Cart.orderedById
-         }
-      });
       res.status(200).json({
          success: true,
          message: "Add product to cart success",
          productOnCart: products,
-         cart: newCart
+         cart: cart
       });
    } catch (err) {
       console.log(err);
@@ -103,6 +122,7 @@ exports.createUserCart = async (req, res) => {
       });
    }
 };
+
 //---------------------------------------------------------------------------
 //obj.product.discounts[0].isActive
 //obj.product.discounts[0].endDate

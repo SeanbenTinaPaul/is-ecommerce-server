@@ -240,7 +240,7 @@ exports.listProd = async (req, res) => {
             createdAt: "desc"
          },
          // Guest/User ต้องการ: id, title, price, sold, promotion, avgRating, images, brand, discounts, favorites
-         // ❌ ไม่ต้องการ: category, ratings (ใช้แค่ avgRating), brandId, categoryId
+         // ไม่ต้องการ: category, ratings (ใช้แค่ avgRating), brandId, categoryId
          include: {
             images: {
                select: {
@@ -303,7 +303,7 @@ exports.readAprod = async (req, res) => {
          //include === JOIN
          //เลือกเฉพาะคอลัมน์ที่ใช้จริงเพื่อลด payload
          include: {
-            // ❌ category: true - ไม่ได้ใช้ใน frontend
+            // category: true - ไม่ได้ใช้ใน frontend
             discounts: {
                select: {
                   startDate: true,
@@ -630,7 +630,7 @@ exports.displayProdBy = async (req, res) => {
          take: limit,
          orderBy: { [sort]: order },
          // ใช้ใน BestSeller.jsx, NewProd.jsx → CardProd.jsx
-         // ❌ ไม่ต้องการ: category, ratings (แค่ avgRating)
+         // ไม่ต้องการ: category, ratings (แค่ avgRating)
          include: {
             images: {
                select: {
@@ -817,7 +817,7 @@ exports.displayProdByUser = async (req, res) => {
    }
 };
 
-/*อยากให้ search 3 วิธี
+/* search 3 วิธี
 1. ตามที่พิมพ์ลงช่อง input
 2. ตามติ๊ก ✔ ช่อง category
 3. ตามราคา */

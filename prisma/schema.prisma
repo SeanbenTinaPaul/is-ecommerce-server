@@ -9,23 +9,23 @@ datasource db {
 }
 
 model User {
-  id             Int          @id @default(autoincrement())
-  email          String       @unique
+  id             Int        @id @default(autoincrement())
+  email          String     @unique
   password       String?
   name           String?
   picture        String?
-  role           String       @default("user")
-  enabled        Boolean      @default(true)
+  role           String     @default("user")
+  enabled        Boolean    @default(true)
   address        String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
   carts          Cart[]
   orders         Order[]
   favorites      Favorite[]
   productRatings Rating[]
-  userCoupons    UserCoupon[]
-  picturePub     String?
-  updatedBy      String?
+
+  picturePub String?
+  updatedBy  String?
 }
 
 model Product {
@@ -112,6 +112,8 @@ model ProductOnCart {
   product     Product @relation(fields: [productId], references: [id])
   buyPriceNum Float
   discount    Float?
+
+  @@unique([cartId, productId]) // Required for upsert - creates implicit index
 }
 
 model Image {
@@ -136,8 +138,6 @@ model Favorite {
   updatedAt DateTime @updatedAt
 
   @@unique([userId, productId])
-  @@index([userId])
-  @@index([productId])
 }
 
 model Rating {
@@ -168,35 +168,6 @@ model Discount {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   createdBy   String
-
-  @@index([startDate, endDate])
-}
-
-model Coupon {
-  id          Int          @id @default(autoincrement())
-  code        String       @unique
-  type        String       @default("FREE_SHIPPING")
-  amount      Int
-  startDate   DateTime
-  endDate     DateTime
-  isActive    Boolean      @default(true)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  createdBy   String
-  userCoupons UserCoupon[]
-}
-
-model UserCoupon {
-  id        Int       @id @default(autoincrement())
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    Int
-  coupon    Coupon    @relation(fields: [couponId], references: [id], onDelete: Cascade)
-  couponId  Int
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  @@unique([userId, couponId])
 }
 
 model Brand {

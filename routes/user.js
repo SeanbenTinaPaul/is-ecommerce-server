@@ -17,7 +17,7 @@ const { userVerify } = require("../middlewares/authVerify");
 
 router.post("/user/cart", userVerify, createUserCart); //add cart
 router.get("/user/cart", userVerify, getUserCart);
-//pending...
+
 router.delete("/user/cart", userVerify, clearCart); //ไม่มี id เพราะจะใช้ id จาก token user คนนั้น
 
 router.post("/user/address", userVerify, saveAddress);
