@@ -447,41 +447,21 @@ exports.readAprod = async (req, res) => {
       //cal percent of ratings from 1 to 5
       //cal percent dominant of ratings 1 to 5
       const ratingArr = aProduct.ratings;
-      let score1 = 0,
-         score2 = 0,
-         score3 = 0,
-         score4 = 0,
-         score5 = 0;
-      let percent1 = 0,
-         percent2 = 0,
-         percent3 = 0,
-         percent4 = 0,
-         percent5 = 0;
-      // ประกาศ rateArrLen นอก if block เพื่อใช้ใน response
       const rateArrLen = ratingArr.length;
-      if (ratingArr.length > 0) {
-         for (const ratings of ratingArr) {
-            if (ratings?.rating === 5) {
-               score5++;
-            } else if (ratings?.rating === 4) {
-               score4++;
-            } else if (ratings?.rating === 3) {
-               score3++;
-            } else if (ratings?.rating === 2) {
-               score2++;
-            } else if (ratings?.rating === 1) {
-               score1++;
-            }
+      
+      // init scores using object (cleaner than 10 separate variables)
+      const scores = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+      
+      // count ratings using direct object key access (O(1) instead of if-else chain)
+      for (const item of ratingArr) {
+         if (item?.rating >= 1 && item?.rating <= 5) {
+            scores[item.rating]++;
          }
-         percent5 = score5 > 0 ? (score5 / rateArrLen) * 100 : 0;
-         percent4 = score4 > 0 ? (score4 / rateArrLen) * 100 : 0;
-         percent3 = score3 > 0 ? (score3 / rateArrLen) * 100 : 0;
-         percent2 = score2 > 0 ? (score2 / rateArrLen) * 100 : 0;
-         percent1 = score1 > 0 ? (score1 / rateArrLen) * 100 : 0;
-
-         // const totalRatingCount = ratingArr.reduce((acc, curr) => acc + curr.rating, 0);
-         // aProduct.ratingPercent = (totalRatingCount / rateArrLen) * 100;
       }
+      
+      // Calculate percentages
+      const calcPercent = (score) => (rateArrLen > 0 && score > 0) ? (score / rateArrLen) * 100 : 0;
+      
       // คำนวณ buyPriceNum และ preferDiscount
       const { buyPriceNum, preferDiscount } = calculateProductDiscount(aProduct);
 
@@ -495,16 +475,16 @@ exports.readAprod = async (req, res) => {
          prodOnOrder: prodOnOrder,
          globalRatingCount: rateArrLen,
          ratingInfo: {
-            score1,
-            score2,
-            score3,
-            score4,
-            score5,
-            percent1,
-            percent2,
-            percent3,
-            percent4,
-            percent5
+            score1: scores[1],
+            score2: scores[2],
+            score3: scores[3],
+            score4: scores[4],
+            score5: scores[5],
+            percent1: calcPercent(scores[1]),
+            percent2: calcPercent(scores[2]),
+            percent3: calcPercent(scores[3]),
+            percent4: calcPercent(scores[4]),
+            percent5: calcPercent(scores[5])
          }
       });
       // res.send(products);
