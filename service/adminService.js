@@ -108,3 +108,46 @@ exports.getOrderAdmin = async (req, res) => {
       res.status(500).json({ message: "Server Error" });
    }
 };
+
+// Paginated orders for Load More feature
+exports.getOrderAdminPaginated = async (req, res) => {
+   try {
+      const skip = parseInt(req.query.skip) || 0;
+      const take = parseInt(req.query.take) || 20;
+
+      const [orders, total] = await Promise.all([
+         prisma.order.findMany({
+            skip,
+            take,
+            orderBy: [
+               { createdAt: "desc" },
+               { id: "desc" }
+            ],
+            include: {
+               products: {
+                  include: { product: true }
+               },
+               orderedBy: {
+                  select: {
+                     id: true,
+                     name: true,
+                     email: true,
+                     address: true
+                  }
+               }
+            }
+         }),
+         prisma.order.count()
+      ]);
+
+      res.status(200).json({
+         success: true,
+         orders,
+         hasMore: skip + take < total,
+         total
+      });
+   } catch (err) {
+      console.log(err);
+      res.status(500).json({ message: "Server Error" });
+   }
+};

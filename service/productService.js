@@ -224,6 +224,84 @@ exports.listProdAdmin = async (req, res) => {
    }
 };
 
+// สำหรับ Admin - Paginated (page-based, 10 items/page)
+exports.listProdAdminPaginated = async (req, res) => {
+   try {
+      await updateDiscount();
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const skip = (page - 1) * limit;
+
+      const [products, total] = await Promise.all([
+         prisma.product.findMany({
+            skip,
+            take: limit,
+            // ใช้ secondary sort by id เพื่อป้องกันสินค้าซ้ำเมื่อ createdAt เหมือนกัน
+            orderBy: [
+               { createdAt: "desc" },
+               { id: "desc" }
+            ],
+            include: {
+               discounts: {
+                  select: { amount: true, startDate: true, endDate: true, isActive: true }
+               },
+               images: {
+                  select: { id: true, url: true }
+               }
+            }
+         }),
+         prisma.product.count()
+      ]);
+
+      res.json({
+         success: true,
+         products,
+         pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit)
+         }
+      });
+   } catch (err) {
+      console.log(err);
+      res.status(500).json({ message: "Server Error" });
+   }
+};
+
+// สำหรับ Admin - Search by title (query DB directly)
+exports.searchProdAdmin = async (req, res) => {
+   try {
+      const { q } = req.query;
+      if (!q || q.trim() === "") {
+         return res.json({ success: true, products: [], isSearchResult: true });
+      }
+      
+      const products = await prisma.product.findMany({
+         where: {
+            title: { contains: q, mode: "insensitive" }
+         },
+         orderBy: [
+            { createdAt: "desc" },
+            { id: "desc" }
+         ],
+         include: {
+            discounts: {
+               select: { amount: true, startDate: true, endDate: true, isActive: true }
+            },
+            images: {
+               select: { id: true, url: true }
+            }
+         }
+      });
+
+      res.json({ success: true, products, isSearchResult: true });
+   } catch (err) {
+      console.log(err);
+      res.status(500).json({ message: "Server Error" });
+   }
+};
+
 // สำหรับ Guest/User (leastStock≥1) - ใช้ใน Shop, ShopUser, CardProd
 exports.listProd = async (req, res) => {
    try {

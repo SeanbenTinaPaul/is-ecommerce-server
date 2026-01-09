@@ -7,6 +7,8 @@ const {
    listProd,
    listProdPaginated,
    listProdAdmin,
+   listProdAdminPaginated,
+   searchProdAdmin,
    readAprod,
    updateProd,
    removeProd,
@@ -30,6 +32,8 @@ const { userVerify, adminVerify } = require("../middlewares/authVerify");
 router.get("/products/:count", listProd); //for Guest/User
 router.get("/products-paginated", listProdPaginated); //for Load More feature
 router.get("/products-admin/:count", listProdAdmin); //for Admin
+router.get("/products-admin-paginated", userVerify, adminVerify, listProdAdminPaginated); //for Admin table pagination
+router.get("/products-admin-search", userVerify, adminVerify, searchProdAdmin); //for Admin search
 router.get("/product/:id", readAprod); //for FormEditProd.jsx → readProduct(token, id,)
 router.get("/product/:id/images", getProductImages); //for CarouselBanner.jsx → lightweight images only
 

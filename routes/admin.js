@@ -5,13 +5,15 @@ const {
     getAllUsers,
    changeUserStatus,
    changeOrderStatus,
-   getOrderAdmin
+   getOrderAdmin,
+   getOrderAdminPaginated
 } = require("../service/adminService");
 const { userVerify, adminVerify } = require("../middlewares/authVerify");
 
 //1. ดึงข้อมูลทั้งหมดไปแสดงที่หน้า admin
 router.get("/admin/all-users", userVerify, adminVerify, getAllUsers);
 router.get("/admin/orders", userVerify, adminVerify, getOrderAdmin);
+router.get("/admin/orders-paginated", userVerify, adminVerify, getOrderAdminPaginated);
 
 //2. หลังดึงข้อมูลจะ update สถานะ
 router.put("/admin/change-status", userVerify, adminVerify, changeUserStatus);
