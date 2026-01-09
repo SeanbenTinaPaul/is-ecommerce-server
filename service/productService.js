@@ -289,6 +289,86 @@ exports.listProd = async (req, res) => {
    }
 };
 
+// =================== PAGINATED PRODUCTS (Load More) ===================
+
+// Paginated products for guest/user - supports "Load More" feature
+exports.listProdPaginated = async (req, res) => {
+   try {
+      await updateDiscount();
+      const take = parseInt(req.query.take) || 20;
+      const skip = parseInt(req.query.skip) || 0;
+      const leastStock = parseInt(req.query.leastStock) || 1;
+
+      const products = await prisma.product.findMany({
+         where: { quantity: { gte: leastStock } },
+         skip,
+         take,
+         orderBy: { createdAt: "desc" },
+         include: {
+            images: { select: { url: true }, take: 1 },
+            brand: { select: { img_url: true, title: true } },
+            discounts: {
+               select: { amount: true, startDate: true, endDate: true, isActive: true }
+            },
+            favorites: { select: { userId: true, productId: true } }
+         }
+      });
+
+      // Count total for "hasMore" check
+      const total = await prisma.product.count({
+         where: { quantity: { gte: leastStock } }
+      });
+
+      const productsWithDiscount = products.map((product) => {
+         const { buyPriceNum, preferDiscount } = calculateProductDiscount(product);
+         return { ...product, buyPriceNum, preferDiscount };
+      });
+
+      res.json({
+         products: productsWithDiscount,
+         hasMore: skip + products.length < total,
+         total
+      });
+   } catch (err) {
+      console.log(err);
+      res.status(500).json({ message: "Server Error" });
+   }
+};
+
+// Fetch products by IDs (for cart sync when products not loaded in current page)
+exports.getProductsByIds = async (req, res) => {
+   try {
+      await updateDiscount();
+      const { ids } = req.body; // [1, 5, 35, ...]
+
+      if (!Array.isArray(ids) || ids.length === 0) {
+         return res.json([]);
+      }
+
+      const products = await prisma.product.findMany({
+         where: { id: { in: ids } },
+         include: {
+            images: { select: { url: true }, take: 1 },
+            brand: { select: { img_url: true, title: true } },
+            discounts: {
+               select: { amount: true, startDate: true, endDate: true, isActive: true }
+            },
+            favorites: { select: { userId: true, productId: true } }
+         }
+      });
+
+      const productsWithDiscount = products.map((product) => {
+         const { buyPriceNum, preferDiscount } = calculateProductDiscount(product);
+         return { ...product, buyPriceNum, preferDiscount };
+      });
+
+      res.json(productsWithDiscount);
+   } catch (err) {
+      console.log(err);
+      res.status(500).json({ message: "Server Error" });
+   }
+};
+
 //อ่านข้อมูลเดียว ตาม id
 exports.readAprod = async (req, res) => {
    // console.log("req.user to read", req.user);

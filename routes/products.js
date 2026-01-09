@@ -5,6 +5,7 @@ const router = express.Router();
 const {
    createProd,
    listProd,
+   listProdPaginated,
    listProdAdmin,
    readAprod,
    updateProd,
@@ -17,7 +18,8 @@ const {
    bulkDiscount,
    getStock,
    subscribeStock,
-   getProductImages
+   getProductImages,
+   getProductsByIds
 } = require("../service/productService");
 
 const { userVerify, adminVerify } = require("../middlewares/authVerify");
@@ -26,11 +28,13 @@ const { userVerify, adminVerify } = require("../middlewares/authVerify");
 //read
 // 'api/products/100?leastStock=0'
 router.get("/products/:count", listProd); //for Guest/User
+router.get("/products-paginated", listProdPaginated); //for Load More feature
 router.get("/products-admin/:count", listProdAdmin); //for Admin
 router.get("/product/:id", readAprod); //for FormEditProd.jsx → readProduct(token, id,)
 router.get("/product/:id/images", getProductImages); //for CarouselBanner.jsx → lightweight images only
 
 //write
+router.post("/products-by-ids", getProductsByIds); //for cart sync
 router.post("/product", userVerify, adminVerify, createProd);
 router.patch("/product/:id", userVerify, adminVerify, updateProd);
 router.delete("/product/:id", userVerify, adminVerify, removeProd); //delete only a single product
