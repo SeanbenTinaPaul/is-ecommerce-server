@@ -494,6 +494,41 @@ exports.getOrder = async (req, res) => {
    }
 };
 
+// Paginated order history for Load More feature
+exports.getOrderPaginated = async (req, res) => {
+   try {
+      const userId = Number(req.user.id);
+      const take = parseInt(req.query.take) || 20;
+      const skip = parseInt(req.query.skip) || 0;
+
+      const orders = await prisma.order.findMany({
+         where: { orderedById: userId },
+         skip,
+         take,
+         orderBy: { createdAt: "desc" },
+         include: {
+            products: {
+               include: { product: { include: { ratings: true } } }
+            }
+         }
+      });
+
+      const total = await prisma.order.count({
+         where: { orderedById: userId }
+      });
+
+      res.status(200).json({
+         success: true,
+         data: orders,
+         hasMore: skip + orders.length < total,
+         total
+      });
+   } catch (err) {
+      console.log(err);
+      res.status(500).json({ success: false, message: "Server Error" });
+   }
+};
+
 /*
 req.body
 {

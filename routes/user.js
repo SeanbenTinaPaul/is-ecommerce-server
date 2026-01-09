@@ -8,6 +8,7 @@ const {
    saveAddress,
    saveOrder,
    getOrder,
+   getOrderPaginated,
    addProdRating,
    favoriteProduct,
    updateUserProfile
@@ -24,6 +25,7 @@ router.post("/user/address", userVerify, saveAddress);
 
 router.post("/user/order", userVerify, saveOrder);
 router.get("/user/order", userVerify, getOrder);
+router.get("/user/order-paginated", userVerify, getOrderPaginated);
 router.post('/user/rating', userVerify, addProdRating);
 
 router.patch("/user/update-profile", userVerify, updateUserProfile);
