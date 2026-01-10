@@ -13,6 +13,7 @@
 |--------------|--------|------------------|---------------|----------------|
 | `/api/products/:count` | GET | `listProd` | `findMany` with filter | `quantity`, `createdAt` |
 | `/api/products-paginated` | GET | `listProdPaginated` | `findMany` with skip/take | `quantity`, `createdAt` |
+| `/api/products/flash-sale` | GET | `listFlashSaleProducts` | `findMany` with discount filter | `Discount.endDate`, `Discount.isActive`, `Product.quantity` |
 | `/api/display-prod-by` | POST | `displayProdBy` | `findMany` with orderBy | `quantity`, `sold`, `createdAt`, `updatedAt` |
 | `/api/search-filters` | POST | `searchFilters` | `findMany` with complex where | `title`, `categoryId`, `price`, `brandId` |
 | `/api/product/:id` | GET | `readAprod` | `findFirst` by id | `Product.id`, `ProductOnOrder.productId` |

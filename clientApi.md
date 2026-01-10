@@ -42,6 +42,7 @@
 | `/api/products-admin/:count`        | GET    | Get products for Admin  | None   |
 | `/api/products-admin-paginated`     | GET    | Get products for Admin (table pagination) | Query: `?page=1&limit=10`   |
 | `/api/products-admin-search`        | GET    | Search products by title (Admin) | Query: `?q=searchTerm`   |
+| `/api/products/flash-sale`          | GET    | Get active flash sale products (Guest/User) | None |
 | `/api/product/:id`                  | GET    | Get a single product    | None                                                 |
 | `/api/product/:id/images`           | GET    | Get product images only (lightweight) | None                                   |
 | `/api/products-by-ids`              | POST   | Get products by IDs (cart sync) | `{ ids: number[] }`                           |

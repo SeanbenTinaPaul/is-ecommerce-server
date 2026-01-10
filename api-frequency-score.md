@@ -48,6 +48,7 @@
 | **8** | `/api/category` | GET | `listCategory` | SearchForProd init | 1-2 |
 | **8** | `/api/brand` | GET | `listBrand` | SearchForProd init | 1-2 |
 | **7** | `/api/product/:id` | GET | `readAprod` | ViewProdPage | 1-3 |
+| **7** | `/api/products/flash-sale` | GET | `listFlashSaleProducts` | Home → FlashSaleProd | 0-1 |
 | **6** | `/api/display-prod-by` (sold) | POST | `displayProdBy` | Home → BestSeller | 0-1 |
 | **6** | `/api/display-prod-by` (updatedAt) | POST | `displayProdBy` | Home → NewProd | 0-1 |
 | **5** | `/api/product/:id/images` | GET | `readProductImages` | Home → CarouselBanner | 0-1 |
@@ -55,7 +56,7 @@
 | **3** | `/api/login` | POST | `logIn` | Login page | 0-1 |
 | **2** | `/api/register` | POST | `register` | Register page | 0-1 |
 
-**Guest Total Score: 78 points**
+**Guest Total Score: 85 points**
 
 ---
 
@@ -86,6 +87,7 @@
 | **8** | `/api/brand` | GET | `listBrand` | SearchForProd init | 1-2 |
 | **8** | `/api/user/cart` | GET | `getUserCart` | HomeUser fetchUserCart | 1-2 |
 | **7** | `/api/user/favorite` | POST | `favoriteProduct` | ViewProdUser toggle heart | 0-5 |
+| **7** | `/api/products/flash-sale` | GET | `listFlashSaleProducts` | HomeUser → FlashSaleProd | 0-1 |
 | **6** | `/api/display-prod-by` (sold) | POST | `displayProdBy` | HomeUser → BestSeller | 0-1 |
 | **6** | `/api/display-prod-by` (updatedAt) | POST | `displayProdBy` | HomeUser → NewProd | 0-1 |
 | **6** | `/api/display-prod-by-user` | GET | `displayProdByUser` | HomeUser → UserFavprod | 0-1 |
@@ -101,7 +103,7 @@
 | **2** | `/api/user/cart` | DELETE | `clearCart` | Remove all items | 0-1 |
 | **2** | `/api/profile-user` | POST | `currUserProfile` | Auth verify | 1 |
 
-**User Total Score: 139 points**
+**User Total Score: 146 points**
 
 ---
 
@@ -371,9 +373,9 @@ features = {
 
 | Category | Total Score | Top Page | Top API |
 |----------|-------------|----------|---------|
-| Guest Routes | 78 | `/shop` | listProd, searchFilters |
-| User Routes | 139 | `/user/shop` | listProd, createUserCart |
-| **Combined** | **217** | Shop pages | Product listing + Cart |
+| Guest Routes | 85 | `/shop` | listProd, searchFilters |
+| User Routes | 146 | `/user/shop` | listProd, createUserCart |
+| **Combined** | **231** | Shop pages | Product listing + Cart |
 
 **Key Insight**: ควรให้ priority กับ:
 1. **Shop page queries**: `Product` table indexes (quantity, createdAt, categoryId, price, brandId)
