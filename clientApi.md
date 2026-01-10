@@ -4,65 +4,124 @@
 
 | Endpoint                            | Method | Description        | Body                                                 |
 |-------------------------------------|--------|--------------------|------------------------------------------------------|
-| `/api/login`                        | POST   | Login user/admin         | `{ "email": "admin@gmail.com", "password": "123admin" }`         |
-| `/api/register`                     | POST   | Register user      | `{ "email":"testFromFrontend@gmail.com", "name":"test", "password":"1234" }`         |
-| `/api/profile-user`                 | POST   | Get current user   | None                                                 |
-| `/api/profile-admin`                | POST   | Get current admin  | None                                                 |
+| `/api/login`                        | POST   | Login user/admin         | `{ email: string, password: string }`         |
+| `/api/register`                     | POST   | Register user      | `{ email: string, name: string, password: string }`         |
+| `/api/profile-user`                 | POST   | Get current user profile   | None                                                 |
+| `/api/profile-admin`                | POST   | Get current admin profile  | None                                                 |
+
+---
 
 ## Category
 
 | Endpoint                            | Method | Description            | Body                        |
-|-------------------------------------|--------|------------------------|-----------------------------|
-| `/api/category`                     | POST   | Create category         | `{ "name":"Sneakers" }`       |
-| `/api/category`                     | GET    | Get categories          | None                        |
+|-------------------------------------|--------|------------------------|-----------------------------| 
+| `/api/category`                     | GET    | Get all categories          | None                        |
+| `/api/category`                     | POST   | Create category         | `{ name: string }`       |
+| `/api/category/:id`                 | PATCH  | Update category by ID   | `{ name: string }`       |
 | `/api/category/:id`                 | DELETE | Delete category by ID   | None                        |
+
+---
+
+## Brand
+
+| Endpoint                            | Method | Description            | Body                        |
+|-------------------------------------|--------|------------------------|-----------------------------| 
+| `/api/brand`                        | GET    | Get all brands          | None                        |
+| `/api/brand`                        | POST   | Create brand            | `{ name: string }`       |
+| `/api/brand`                        | PATCH  | Update brand            | `{ id: number, name: string }`       |
+| `/api/brand/:id`                    | DELETE | Delete brand by ID      | None                        |
+
+---
 
 ## Product
 
-| Endpoint                            | Method | Description            | Body                                                                                  |
-|-------------------------------------|--------|------------------------|---------------------------------------------------------------------------------------|
-| `/api/products/:count`              | POST  | Get all product          | `{"leastStock":0}` or `{"leastStock":1}`   |
-| `/api/product`                      | POST   | Create product          | `{ "title":"ขาหมูเยอรมัน","description":"desc","price":250,"quantity":100,"categoryId":3,"images":[ {"asset_id":"6e2a", "public_id":"Ecom_fullstack_app_msc_products/pr", "url":"http://res.cloudinary.com/product-81.jpg", "secure_url":"https://res.cloudinary.com/product-888.jpg"}, {...} ] }` |
-| `/api/product/:id`                  | PATCH    | Update a product       | `{ "tilte": "ขาหมูเยอรมัน", "description": "desc", "price": 250, "quantity": 100, "categoryId": 3, "images": [ {"asset_id":"6e2a", "public_id":"Ecom_fullstack_app_msc_products/pr", "url":"http://res.cloudinary.com/product-81.jpg", "secure_url":"https://res.cloudinary.com/product-888.jpg"}, {...} ] }`                                                                                 |
-| `/api/product/:id`                  | GET    | Get a product        | None                                                                                  |
-| `/api/product/:id`                  | DELETE | Delete a product    | None                                                                                  |
-| `/api/display-prod-by`              | POST   | Get products by filters | `{ "sort":"sold", "order":"desc", "limit": 10 }` |
-| `/api/display-prod-by-user`         | GET   | Get products by user's favorites | None |
-| `/api/search-filters`               | POST   | Narrow search with filters     | `{ "category": [7,1], "query": "tes", "price": [0,100] }`        |
-| `/api/bulk-discount`               | POST   | Manage product promotion | `{ "products":[ { "id":1, "title":"LG Laptop" }, { "id":2,..} ], "amount":10, "startDate":"2025-01-17T21:58:44.063Z", "endDate":"2025-02-17T21:58:44.063Z", "description":"New year sale", "isPromotion":false }` or `{ "products":[ { "id":1, "title":"LG Laptop" }, { "id":2,..} ], "amount":10, "startDate":"2025-01-17T21:58:44.063Z", "endDate":"2025-01-17T21:58:44.063Z", "description":"", "isPromotion":true }`       |
-| `/api/images`                       | POST | Upload image to the cloud service   |  `{"image": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/..."}`  |
-| `/api/removeimage`                  | POST | Remove image from the clound service  |  `{"public_id": "Ecom_fullstack_app_msc_products/product-173..."}`  |
-| `/api/product/stock/:id`            | GET  | Get product stock info by ID          | None |
-| `/api/product/sse`                  | GET  | Subscribe to real-time stock updates (SSE) | None |
+| Endpoint                            | Method | Description            | Body / Query Params                                  |
+|-------------------------------------|--------|------------------------|------------------------------------------------------|
+| `/api/products/:count`              | GET    | Get products (Guest/User) | Query: `?leastStock=0` or `?leastStock=1`   |
+| `/api/products-paginated`           | GET    | Get products paginated (Load More) | Query: `?skip=0&take=20&leastStock=1`   |
+| `/api/products-admin/:count`        | GET    | Get products for Admin  | None   |
+| `/api/products-admin-paginated`     | GET    | Get products for Admin (table pagination) | Query: `?page=1&limit=10`   |
+| `/api/products-admin-search`        | GET    | Search products by title (Admin) | Query: `?q=searchTerm`   |
+| `/api/product/:id`                  | GET    | Get a single product    | None                                                 |
+| `/api/product/:id/images`           | GET    | Get product images only (lightweight) | None                                   |
+| `/api/products-by-ids`              | POST   | Get products by IDs (cart sync) | `{ ids: number[] }`                           |
+| `/api/product`                      | POST   | Create product          | `{ title: string, description: string, price: number, quantity: number, categoryId: number, brandId?: number, images: ImageObject[] }` |
+| `/api/product/:id`                  | PATCH  | Update a product        | `{ title?: string, description?: string, price?: number, quantity?: number, categoryId?: number, brandId?: number, images?: ImageObject[] }` |
+| `/api/product/:id`                  | DELETE | Delete a product        | None                                                 |
+| `/api/display-prod-by`              | POST   | Get products by filters | `{ sort: string, order: string, limit: number }` |
+| `/api/display-prod-by-user`         | GET    | Get products by user's favorites | None |
+| `/api/search-filters`               | POST   | Narrow search with filters     | `{ category?: number[], query?: string, price?: [min, max] }`        |
+| `/api/bulk-discount`                | POST   | Manage product promotion | `{ products: ProductItem[], amount: number, startDate: string, endDate: string, description: string, isPromotion: boolean }` |
+| `/api/images`                       | POST   | Upload image to cloud   |  `{ image: string (base64) }`  |
+| `/api/removeimage`                  | POST   | Remove image from cloud |  `{ public_id: string }`  |
+| `/api/get-folder-images`            | POST   | Get images from cloud folder | `{ folderName: string }`  |
+
+---
+
+## Stock & SSE (Real-time)
+
+| Endpoint                            | Method | Description            | Body                        |
+|-------------------------------------|--------|------------------------|-----------------------------| 
+| `/api/stock/:id`                    | GET    | Get product stock info by ID | None |
+| `/api/sse`                          | GET    | Subscribe to real-time stock updates (SSE) | None |
+
+---
 
 ## User
 
 | Endpoint                            | Method | Description               | Body                                                       |
-|-------------------------------------|--------|---------------------------|------------------------------------------------------------|
-| `/api/user/cart`                    | POST   | Add to user cart          | `{ "carts": [{ "id": 1, "countCart": 2, "price": 100, "buyPriceNum": 95,"preferDiscount": 5}, {...}] }` |
+|-------------------------------------|--------|---------------------------|------------------------------------------------------------| 
+| `/api/user/cart`                    | POST   | Create/Update user cart   | `{ carts: CartItem[] }` |
 | `/api/user/cart`                    | GET    | Get user cart             | None                                                       |
 | `/api/user/cart`                    | DELETE | Clear user cart           | None                                                       |
-| `/api/user/address`                 | POST   | Add user address          | `{ "address": "kku" }`                                   |
-| `/api/user/order`                   | POST   | Place an order            | `{ "paymentIntent": {"id": "pi_123456789", "amount": 100.00, "currency": "thb", "status": "succeeded"} }`|
+| `/api/user/address`                 | POST   | Add user address          | `{ address: string }`                                   |
+| `/api/user/order`                   | POST   | Place an order            | `{ paymentIntent: PaymentIntentObject }`|
 | `/api/user/order`                   | GET    | Get user orders           | None                                                       |
-| `/api/user/rating`                  | POST   | Add user rating and comment to products | `{ "ratings": [ {"productId": 1, "orderId": 123, "rating": 5, "comment": "Good quality product!"}, {"productId": 2, "orderId": 123,...} ] }`|
-| `/api/user/update-profile`          | POST   | Update user profile      | `{ "name": "test2", "email": "test@example.com", "password": "1234","image": { "url": "https://res.cloudinary.com/...","public_id": "Ecom_fullstack_app_msc_products/product-173..."} }` |
+| `/api/user/order-paginated`         | GET    | Get user orders (paginated) | Query: `?skip=0&take=10`                                    |
+| `/api/user/rating`                  | POST   | Add user rating and comment | `{ ratings: RatingItem[] }`|
+| `/api/user/update-profile`          | PATCH  | Update user profile      | `{ name?: string, email?: string, password?: string, image?: ImageObject }` |
+| `/api/user/favorite`                | POST   | Toggle favorite product  | `{ productId: number }` |
+
+---
 
 ## Admin
 
 | Endpoint                            | Method | Description               | Body                              |
 |-------------------------------------|--------|---------------------------|-----------------------------------|
-| `/api/all-users`                    | GET    | Get all users             | None                                                       |
-| `/api/change-status`                | PUT   | Update user status        | `{ "userIdArr": [123, 456, 789], "userEnabled": true, "userRole": "admin" }`|
+| `/api/admin/all-users`              | GET    | Get all users             | None                              |
+| `/api/admin/change-status`          | PUT    | Update user status/role   | `{ userIdArr: number[], userEnabled: boolean, userRole: string }`|
 | `/api/admin/orders`                 | GET    | Get all orders            | None                              |
-| `/api/user/order-status`            | PUT    | Update order status       | `{ "orderIdArr": [123, 456, 789], "orderStatus": "Not Process" }` |
+| `/api/admin/orders-paginated`       | GET    | Get orders paginated (Load More) | Query: `?skip=0&take=20`          |
+| `/api/admin/order-status`           | PUT    | Update order status       | `{ orderIdArr: number[], orderStatus: string }` |
 
-## Payment
+---
+
+## Payment (Stripe)
 
 | Endpoint                            | Method | Description               | Body                              |
 |-------------------------------------|--------|---------------------------|-----------------------------------|
-| `/api/user/create-payment-intent`   | POST   | Create payment-intent     | `{"id":1}`                        |
-| `/api/user/cancel-payment-intent`   | POST   | Cancel payment-intent     | `{"id":"pi_32AkjQ5H4Bas2..."}`                        |
-| `/api/user/refund-payment`          | POST   | Request for refunding after purchase success    | `{"orderId": 1}`                  |
+| `/api/user/create-payment-intent`   | POST   | Create payment-intent     | `{ id: number }`                  |
+| `/api/user/cancel-payment-intent`   | POST   | Cancel payment-intent     | `{ id: string }`                  |
+| `/api/user/refund-payment`          | POST   | Request refund after purchase | `{ orderId: number }`          |
 
+---
+
+## Data Types Reference
+
+```typescript
+// ImageObject
+{ asset_id: string, public_id: string, url: string, secure_url: string }
+
+// CartItem
+{ id: number, countCart: number, price: number, buyPriceNum: number, preferDiscount: number }
+
+// ProductItem (for bulk-discount)
+{ id: number, title: string }
+
+// RatingItem
+{ productId: number, orderId: number, rating: number, comment: string }
+
+// PaymentIntentObject
+{ id: string, amount: number, currency: string, status: string }
+```
 

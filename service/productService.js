@@ -234,11 +234,11 @@ exports.listProdAdminPaginated = async (req, res) => {
 
       const [products, total] = await Promise.all([
          prisma.product.findMany({
-            skip,
+            skip: skip,
             take: limit,
             // ใช้ secondary sort by id เพื่อป้องกันสินค้าซ้ำเมื่อ createdAt เหมือนกัน
             orderBy: [
-               { createdAt: "desc" },
+               { categoryId: "asc" },
                { id: "desc" }
             ],
             include: {
@@ -255,11 +255,11 @@ exports.listProdAdminPaginated = async (req, res) => {
 
       res.json({
          success: true,
-         products,
+         products: products,
          pagination: {
-            page,
-            limit,
-            total,
+            page: page,
+            limit: limit,
+            total: total,
             totalPages: Math.ceil(total / limit)
          }
       });
@@ -413,11 +413,73 @@ exports.listProdPaginated = async (req, res) => {
    }
 };
 
+// =================== FLASH SALE PRODUCTS ===================
+
+// สำหรับ FlashSaleProd.jsx - fetch products ที่มี active flash sale discount
+exports.listFlashSaleProducts = async (req, res) => {
+   try {
+      await updateDiscount();
+      const now = new Date();
+
+      // Query products ที่มี active discount (startDate <= now < endDate && isActive)
+      const products = await prisma.product.findMany({
+         where: {
+            quantity: { gte: 1 },
+            discounts: {
+               some: {
+                  isActive: true,
+                  startDate: { lte: now },
+                  endDate: { gt: now }
+               }
+            }
+         },
+         orderBy: { createdAt: "desc" },
+         include: {
+            images: { select: { url: true }, take: 1 },
+            brand: { select: { img_url: true, title: true } },
+            category: { select: { id: true, name: true } },
+            discounts: {
+               select: { amount: true, startDate: true, endDate: true, isActive: true }
+            },
+            favorites: { select: { userId: true, productId: true } }
+         }
+      });
+
+      // คำนวณ buyPriceNum และ preferDiscount
+      const productsWithDiscount = [];
+      for (const product of products) {
+         const { buyPriceNum, preferDiscount } = calculateProductDiscount(product);
+         productsWithDiscount.push({
+            ...product,
+            buyPriceNum,
+            preferDiscount
+         });
+      }
+
+      // หา endDate ของ flash sale สำหรับ countdown (ใช้ endDate ที่ใกล้ที่สุด)
+      let flashSaleEndDate = null;
+      if (products.length > 0 && products[0].discounts?.length > 0) {
+         flashSaleEndDate = products[0].discounts[0].endDate;
+      }
+
+      res.json({
+         success: true,
+         products: productsWithDiscount,
+         flashSaleEndDate,
+         hasFlashSale: productsWithDiscount.length > 0
+      });
+   } catch (err) {
+      console.log(err);
+      res.status(500).json({ message: "Server Error" });
+   }
+};
+
 // Fetch products by IDs (for cart sync when products not loaded in current page)
 exports.getProductsByIds = async (req, res) => {
    try {
       await updateDiscount();
       const { ids } = req.body; // [1, 5, 35, ...]
+
 
       if (!Array.isArray(ids) || ids.length === 0) {
          return res.json([]);

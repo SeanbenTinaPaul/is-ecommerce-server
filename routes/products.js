@@ -21,13 +21,16 @@ const {
    getStock,
    subscribeStock,
    getProductImages,
-   getProductsByIds
+   getProductsByIds,
+   listFlashSaleProducts
 } = require("../service/productService");
 
 const { userVerify, adminVerify } = require("../middlewares/authVerify");
 
 //ENDPOINT: http://localhost:5000/api/product
 //read
+// Flash sale route ต้องอยู่ก่อน /products/:count เพื่อไม่ให้ถูกจับเป็น dynamic parameter
+router.get("/products/flash-sale", listFlashSaleProducts); //for FlashSaleProd.jsx → active flash sale products
 // 'api/products/100?leastStock=0'
 router.get("/products/:count", listProd); //for Guest/User
 router.get("/products-paginated", listProdPaginated); //for Load More feature
