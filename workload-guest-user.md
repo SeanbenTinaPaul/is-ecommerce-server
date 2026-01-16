@@ -1,7 +1,8 @@
 # Workload Analysis (Guest + User Only)
 
 ## Scope
-วิเคราะห์ workload เฉพาะ **Guest** และ **User** routes เท่านั้น (ไม่รวม Admin)
+วิเคราะห์ workload เฉพาะ **Guest** และ **User** routes (ไม่รวม Admin)  
+รองรับ **Dynamic Indexing Research** โดยแบ่งตามช่วงเวลาใช้งาน
 
 ---
 
@@ -16,11 +17,69 @@
 
 ---
 
-## 2. Included API Endpoints
+## 2. Workload Periods (สำหรับ Dynamic Indexing)
 
-### products.js (Guest + User)
+### Period 1: วันปกติ (Normal Days) → เน้นหน้า Shop
+
+| ช่วงเวลา | Traffic | Primary Page | Primary APIs |
+|----------|---------|--------------|--------------|
+| **เช้า (06:00-12:00)** | Low-Medium | `/shop`, `/user/shop` | listProd, searchFilters |
+| **Peak (17:00-22:00)** | High | `/shop`, `/user/shop` | listProd, searchFilters, createUserCart |
+| **กลางคืน (00:00-06:00)** | Very Low | `/shop` | listProd |
+
+**User Behavior**:
+- เข้าใช้หน้า Shop เป็นหลัก
+- ค้นหาสินค้า, เปรียบเทียบราคา
+- Add to cart ช่วง peak
+- การ checkout มักเกิดช่วง peak
+
+### Period 2: Flash Sale → เน้นหน้า Home
+
+| ช่วงเวลา | Traffic | Primary Page | Primary APIs |
+|----------|---------|--------------|--------------|
+| **Flash Sale (ตลอด event)** | Very High | `/`, `/user` | **listFlashSaleProducts**, displayProdBy, listProd |
+
+**User Behavior**:
+- เข้าหน้า Home เพื่อดู Flash Sale banner
+- กด Flash Sale products โดยตรง
+- ตัดสินใจซื้อเร็ว (impulse buying)
+- Cart operations สูงกว่าปกติ
+
+---
+
+## 3. API Priority by Workload Period
+
+### Normal Days (Shop-focused)
+
+| Priority | Endpoint | Function | Freq |
+|----------|----------|----------|------|
+| ⭐⭐⭐ | `/api/products/:count` | listProd | ★★★★★ |
+| ⭐⭐⭐ | `/api/products-paginated` | listProdPaginated | ★★★★★ |
+| ⭐⭐⭐ | `/api/search-filters` | searchFilters | ★★★★☆ |
+| ⭐⭐ | `/api/category` | listCategory | ★★★☆☆ |
+| ⭐⭐ | `/api/brand` | listBrand | ★★★☆☆ |
+| ⭐⭐ | `/api/user/cart` POST | createUserCart | ★★★☆☆ |
+| ⭐ | `/api/product/:id` | readAprod | ★★★☆☆ |
+
+### Flash Sale Period (Home-focused)
+
+| Priority | Endpoint | Function | Freq |
+|----------|----------|----------|------|
+| ⭐⭐⭐ | `/api/products/flash-sale` | listFlashSaleProducts | ★★★★★ |
+| ⭐⭐⭐ | `/api/display-prod-by` (sold) | displayProdBy | ★★★★☆ |
+| ⭐⭐⭐ | `/api/user/cart` POST | createUserCart | ★★★★☆ |
+| ⭐⭐ | `/api/product/:id` | readAprod | ★★★★☆ |
+| ⭐⭐ | `/api/product/:id/images` | getProductImages | ★★★☆☆ |
+| ⭐ | `/api/products/:count` | listProd | ★★★☆☆ |
+
+---
+
+## 4. Included API Endpoints (Guest + User)
+
+### products.js
 | Endpoint | Method | Type | Function |
 |----------|--------|------|----------|
+| `/api/products/flash-sale` | GET | READ | listFlashSaleProducts |
 | `/api/products/:count` | GET | READ | listProd |
 | `/api/products-paginated` | GET | READ | listProdPaginated |
 | `/api/product/:id` | GET | READ | readAprod |
@@ -31,8 +90,6 @@
 | `/api/search-filters` | POST | READ | searchFilters |
 | `/api/stock/:id` | GET | READ | getStock |
 | `/api/sse` | GET | READ | subscribeStock |
-| `/api/images` | POST | WRITE | uploadImages |
-| `/api/removeimage` | POST | WRITE | removeImage |
 
 ### user.js
 | Endpoint | Method | Type | Function |
@@ -48,21 +105,17 @@
 | `/api/user/favorite` | POST | WRITE | favoriteProduct |
 | `/api/user/update-profile` | PATCH | WRITE | updateUserProfile |
 
-### auth.js (Guest + User)
+### auth.js & paymentStripe.js
 | Endpoint | Method | Type | Function |
 |----------|--------|------|----------|
 | `/api/register` | POST | WRITE | register |
 | `/api/login` | POST | WRITE | logIn |
 | `/api/profile-user` | POST | READ | currUserProfile |
-
-### paymentStripe.js
-| Endpoint | Method | Type | Function |
-|----------|--------|------|----------|
 | `/api/user/create-payment-intent` | POST | WRITE | createPayment |
 | `/api/user/cancel-payment-intent` | POST | WRITE | cancelPayment |
 | `/api/user/refund-payment` | POST | WRITE | reqRefund |
 
-### category.js & brand.js (Read Only)
+### category.js & brand.js
 | Endpoint | Method | Type | Function |
 |----------|--------|------|----------|
 | `/api/category` | GET | READ | listCategory |
@@ -70,82 +123,58 @@
 
 ---
 
-## 3. Read/Write Summary
+## 5. Index Recommendations by Period
 
-| Type | Count | % |
-|------|-------|---|
-| **READ** | 16 endpoints | 57% |
-| **WRITE** | 12 endpoints | 43% |
-
-**Actual Frequency Ratio: ~85:15** (READ endpoints ถูกเรียกบ่อยกว่ามาก)
-
----
-
-## 4. Top 10 Request Patterns
-
-| Rank | Pattern | Endpoint | Method | Type | Frequency |
-|------|---------|----------|--------|------|-----------|
-| 1 | Product Listing | `/api/products/:count` | GET | READ | ★★★★★ |
-| 2 | Product Pagination | `/api/products-paginated` | GET | READ | ★★★★★ |
-| 3 | Search/Filter | `/api/search-filters` | POST | READ | ★★★★☆ |
-| 4 | Save Cart | `/api/user/cart` | POST | WRITE | ★★★★☆ |
-| 5 | Product Detail | `/api/product/:id` | GET | READ | ★★★★☆ |
-| 6 | Get Cart | `/api/user/cart` | GET | READ | ★★★☆☆ |
-| 7 | Display Products | `/api/display-prod-by` | POST | READ | ★★★☆☆ |
-| 8 | List Categories | `/api/category` | GET | READ | ★★★☆☆ |
-| 9 | List Brands | `/api/brand` | GET | READ | ★★★☆☆ |
-| 10 | Product Images | `/api/product/:id/images` | GET | READ | ★★☆☆☆ |
-
----
-
-## 5. Query Type Distribution
-
-```
-READ Patterns (85%):
-├── Range + Sort (40%): listProd, listProdPaginated, displayProdBy
-├── Complex WHERE (25%): searchFilters
-├── Point Query (15%): readAprod, getUserCart, getOrder
-└── Full Scan (5%): listCategory, listBrand (small tables)
-
-WRITE Patterns (15%):
-├── Upsert (8%): createUserCart
-├── Insert (4%): saveOrder, register, addProdRating
-├── Update (2%): updateUserProfile, saveAddress
-└── Delete (1%): clearCart, favoriteProduct (toggle)
-```
-
----
-
-## 6. Frontend Trigger Points
-
-### Guest Layout (Layout.jsx)
-- ไม่มี API call โดยตรง → delegate ให้ child pages
-
-### User Layout (LayoutUser.jsx)
-- `syncCartProductsFromDB()` → `/api/products-by-ids` (on mount)
-
-### Primary Pages (Shop > Home):
-| Page | APIs Triggered |
-|------|----------------|
-| Shop/ShopUser | listProd, listProdPaginated, listCategory, listBrand, searchFilters |
-| ViewProdPage | readAprod, getCategory, createUserCart, favoriteProduct |
-| Home/HomeUser | displayProdBy, getProductImages, fetchUserCart, displayProdByUser |
-| Cart | createUserCart, getUserCart |
-| History | getOrder, getOrderPaginated |
-
----
-
-## 7. Index Recommendations for Guest + User
-
+### Normal Days (Shop-focused)
 | Priority | Index | Table | Query Source |
 |----------|-------|-------|--------------|
-| ⭐⭐⭐ | `(quantity, createdAt)` | Product | listProd, listProdPaginated |
+| ⭐⭐⭐ | `(quantity, createdAt)` | Product | listProd |
 | ⭐⭐⭐ | `(categoryId)` | Product | searchFilters |
 | ⭐⭐⭐ | `(price)` | Product | searchFilters |
 | ⭐⭐⭐ | `(brandId)` | Product | searchFilters |
-| ⭐⭐⭐ | `(orderedById)` | Cart | createUserCart, getUserCart |
+| ⭐⭐ | `(orderedById)` | Cart | createUserCart |
+
+### Flash Sale Period (Home-focused)
+| Priority | Index | Table | Query Source |
+|----------|-------|-------|--------------|
+| ⭐⭐⭐ | `(endDate, isActive)` | Discount | listFlashSaleProducts |
+| ⭐⭐⭐ | `(productId)` | Discount | listFlashSaleProducts JOIN |
+| ⭐⭐⭐ | `(orderedById)` | Cart | createUserCart (high volume) |
 | ⭐⭐ | `(sold)` | Product | displayProdBy |
-| ⭐⭐ | `(updatedAt)` | Product | displayProdBy |
-| ⭐⭐ | `(orderedById)` | Order | getOrder, getOrderPaginated |
-| ⭐ | `(productId)` | ProductOnOrder | readAprod |
-| ⭐ | `(userId)` | Favorite | favoriteProduct |
+| ⭐⭐ | `(quantity)` | Product | flash sale filter |
+
+---
+
+## 6. Read/Write Summary
+
+| Type | Count | % |
+|------|-------|---|
+| **READ** | 17 endpoints | 59% |
+| **WRITE** | 12 endpoints | 41% |
+
+**Actual Frequency Ratio**: ~85:15 (READ ถูกเรียกบ่อยกว่ามาก)
+
+---
+
+## 7. Dynamic Indexing Strategy
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Dynamic Indexing Framework                        │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  [Normal Days]              [Flash Sale Period]                      │
+│  Shop-focused               Home-focused                             │
+│                                                                      │
+│  Active Indexes:            Active Indexes:                          │
+│  ├── idx_product_qty_date   ├── idx_discount_enddate_active         │
+│  ├── idx_product_categoryId ├── idx_discount_productId              │
+│  ├── idx_product_price      ├── idx_product_sold                    │
+│  ├── idx_product_brandId    ├── idx_cart_orderedById                │
+│  └── idx_cart_orderedById   └── idx_product_quantity                │
+│                                                                      │
+│  Switch Trigger:            Switch Trigger:                          │
+│  Manual / Scheduled         Flash Sale Start Event                   │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
