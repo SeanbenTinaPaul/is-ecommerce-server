@@ -131,9 +131,14 @@ function randomPromotion() {
 function generateProductData(categoryIds, brandIds) {
    const price = faker.number.float({ min: 100, max: 50000, fractionDigits: 2 });
    
+   // สร้าง description อย่างน้อย 500 ตัวอักษร โดยใช้ paragraphs + productDescription
+   const baseDesc = faker.commerce.productDescription();
+   const extraParagraphs = faker.lorem.paragraphs(3);
+   const description = `${baseDesc}\n\n${extraParagraphs}`;
+   
    return {
       title: faker.commerce.productName(),
-      description: faker.commerce.productDescription(),
+      description: description,
       price: price,
       quantity: faker.number.int({ min: 1, max: 500 }),
       sold: faker.number.int({ min: 0, max: 100 }),
@@ -144,6 +149,7 @@ function generateProductData(categoryIds, brandIds) {
       createdBy: SEED_CREATOR_EMAIL
    };
 }
+
 
 /**
  * Generate image data object สำหรับ product
@@ -198,8 +204,10 @@ async function seedCategories() {
 async function seedBrands() {
    console.log("🏷️ Seeding new brands...");
    let added = 0;
+   let brandIndex = 0;
 
    for (const brand of NEW_BRANDS) {
+      brandIndex++;
       try {
          // ตรวจสอบว่ามีอยู่แล้วหรือไม่ (by title)
          const existing = await prisma.brand.findFirst({
@@ -207,10 +215,16 @@ async function seedBrands() {
          });
 
          if (!existing) {
+            // สร้าง placeholder image URL สำหรับ brand
+            const imgUrl = `https://picsum.photos/seed/brand${brandIndex}/200/200`;
+            const publicId = `seed_brands/brand_${brandIndex}`;
+            
             await prisma.brand.create({
                data: {
                   title: brand.title,
                   description: brand.description,
+                  img_url: imgUrl,
+                  public_id: publicId,
                   createdBy: SEED_CREATOR_EMAIL
                }
             });
@@ -222,6 +236,7 @@ async function seedBrands() {
    }
 
    console.log(`✅ Added ${added} new brands`);
+
 }
 
 /**

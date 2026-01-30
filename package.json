@@ -8,7 +8,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "nodemon server.js",
     "postinstall": "prisma generate",
-    "seed:products": "node prisma/seed-products.js"
+    "seed:products": "node prisma/seed-products.js",
+    "seed:users": "node prisma/seed-users.js"
   },
   "prisma": {
     "schema": "prisma/schema.prisma"
