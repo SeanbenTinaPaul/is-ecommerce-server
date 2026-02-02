@@ -1,0 +1,278 @@
+[
+  {
+    "route": "/user",
+    "categoryHint": "home",
+    "description": "User home page with product showcases",
+    "persistentConnections": [
+      {
+        "method": "GET",
+        "path": "/api/sse",
+        "notes": "SSE connection via SSEProvider - always active for real-time updates"
+      }
+    ],
+    "calls": [
+      {
+        "method": "POST",
+        "path": "/api/products-by-ids",
+        "expectedCallsPerVisit": 1,
+        "triggerType": "mount",
+        "notes": "syncCartProductsFromDB - syncs cart products with latest DB data"
+      },
+      {
+        "method": "GET",
+        "path": "/api/user/cart",
+        "expectedCallsPerVisit": 1,
+        "triggerType": "mount",
+        "notes": "fetchUserCart - HomeUser useEffect"
+      },
+      {
+        "method": "GET",
+        "path": "/api/products/:count",
+        "expectedCallsPerVisit": 1,
+        "triggerType": "mount",
+        "notes": "getProduct(20,1) - called inside fetchUserCart"
+      },
+      {
+        "method": "GET",
+        "path": "/api/product/:id/images",
+        "expectedCallsPerVisit": 1,
+        "triggerType": "mount",
+        "notes": "readProductImages(46) - CarouselBanner fetches banner images"
+      },
+      {
+        "method": "GET",
+        "path": "/api/products/flash-sale",
+        "expectedCallsPerVisit": 1,
+        "triggerType": "mount",
+        "notes": "listFlashSaleProducts - FlashSaleProd component"
+      },
+      {
+        "method": "POST",
+        "path": "/api/display-prod-by",
+        "expectedCallsPerVisit": 2,
+        "triggerType": "mount",
+        "notes": "displayProdBy - BestSeller(sort=sold,limit=5) + NewProd(sort=updatedAt,limit=10)"
+      },
+      {
+        "method": "GET",
+        "path": "/api/display-prod-by-user",
+        "expectedCallsPerVisit": 1,
+        "triggerType": "mount",
+        "notes": "displayProdByUser - UserFavprod recommendations"
+      }
+    ]
+  },
+  {
+    "route": "/user/shop",
+    "categoryHint": "browse",
+    "description": "Product listing with search and filter",
+    "calls": [
+      {
+        "method": "GET",
+        "path": "/api/products/:count",
+        "expectedCallsPerVisit": 1,
+        "triggerType": "mount",
+        "notes": "getProduct(20,1) - ShopUser initial load"
+      },
+      {
+        "method": "GET",
+        "path": "/api/category",
+        "expectedCallsPerVisit": 1,
+        "triggerType": "mount",
+        "notes": "getCategory - SearchForProd component"
+      },
+      {
+        "method": "GET",
+        "path": "/api/brand",
+        "expectedCallsPerVisit": 1,
+        "triggerType": "mount",
+        "notes": "getBrand - SearchForProd component"
+      },
+      {
+        "method": "GET",
+        "path": "/api/products-paginated",
+        "expectedCallsPerVisit": 1.6,
+        "triggerType": "user",
+        "notes": "loadMoreProducts - user clicks 'Load More'",
+        "details": {
+          "initial": 1,
+          "extra": 2,
+          "p_extra": 0.3
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/search-filters",
+        "expectedCallsPerVisit": 1,
+        "triggerType": "user",
+        "notes": "getSeachFilterProd - on search submit"
+      }
+    ]
+  },
+  {
+    "route": "/user/cart",
+    "categoryHint": "cart",
+    "description": "Cart checkout page",
+    "calls": [
+      {
+        "method": "GET",
+        "path": "/api/user/cart",
+        "expectedCallsPerVisit": 1,
+        "triggerType": "mount",
+        "notes": "fetchUserCart - CartCheckout initial load"
+      },
+      {
+        "method": "POST",
+        "path": "/api/user/cart",
+        "expectedCallsPerVisit": 0.6,
+        "triggerType": "user",
+        "notes": "createCartUser - on Checkout button click"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/user/cart",
+        "expectedCallsPerVisit": 0.05,
+        "triggerType": "conditional",
+        "notes": "clearCartUser - only when all items removed"
+      }
+    ]
+  },
+  {
+    "route": "/user/payment",
+    "categoryHint": "checkout",
+    "description": "Payment page with Stripe integration",
+    "calls": [
+      {
+        "method": "GET",
+        "path": "/api/user/cart",
+        "expectedCallsPerVisit": 1,
+        "triggerType": "mount",
+        "notes": "getCartUser - CardPurchase loads cart summary"
+      },
+      {
+        "method": "POST",
+        "path": "/api/user/address",
+        "expectedCallsPerVisit": 1,
+        "triggerType": "user",
+        "notes": "saveAddressUser - on Save Address button click"
+      },
+      {
+        "method": "POST",
+        "path": "/api/user/create-payment-intent",
+        "expectedCallsPerVisit": 1,
+        "triggerType": "user",
+        "notes": "createPaymentUser - PaymentMethod after address saved"
+      },
+      {
+        "method": "POST",
+        "path": "/api/user/order",
+        "expectedCallsPerVisit": 0.9,
+        "triggerType": "user",
+        "notes": "saveOrderUser - CheckoutForm on successful payment"
+      },
+      {
+        "method": "POST",
+        "path": "/api/user/cancel-payment-intent",
+        "expectedCallsPerVisit": 0.01,
+        "triggerType": "conditional",
+        "notes": "reqCancelPayment - only on user cancel"
+      }
+    ]
+  },
+  {
+    "route": "/user/history",
+    "categoryHint": "account",
+    "description": "Purchase history and order management",
+    "calls": [
+      {
+        "method": "GET",
+        "path": "/api/user/order-paginated",
+        "expectedCallsPerVisit": 1.3,
+        "triggerType": "mount",
+        "notes": "getOrderUserPaginated - initial load + loadMoreOrders",
+        "details": {
+          "initial": 1,
+          "extra": 2,
+          "p_extra": 0.15
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/user/rating",
+        "expectedCallsPerVisit": 0.03,
+        "triggerType": "conditional",
+        "notes": "addRatingUser - user submits feedback"
+      },
+      {
+        "method": "POST",
+        "path": "/api/user/refund-payment",
+        "expectedCallsPerVisit": 0.01,
+        "triggerType": "conditional",
+        "notes": "reqRefund - user requests refund"
+      }
+    ]
+  },
+  {
+    "route": "/user/favorite",
+    "categoryHint": "account",
+    "description": "User favorite products page",
+    "calls": [
+      {
+        "method": "GET",
+        "path": "/api/products/:count",
+        "expectedCallsPerVisit": 1,
+        "triggerType": "mount",
+        "notes": "getProduct(100,1) - FavoriteUser loads products and filters by favorites"
+      }
+    ]
+  },
+  {
+    "route": "/user/editprofile",
+    "categoryHint": "account",
+    "description": "User profile editing page",
+    "calls": [
+      {
+        "method": "PATCH",
+        "path": "/api/user/update-profile",
+        "expectedCallsPerVisit": 0.05,
+        "triggerType": "user",
+        "notes": "updateProfileUser - on profile update submit"
+      }
+    ]
+  },
+  {
+    "route": "/user/view-product/:id",
+    "categoryHint": "product-detail",
+    "description": "Single product detail page",
+    "calls": [
+      {
+        "method": "GET",
+        "path": "/api/product/:id",
+        "expectedCallsPerVisit": 1,
+        "triggerType": "mount",
+        "notes": "readProduct - ViewProdUser fetches product details"
+      },
+      {
+        "method": "GET",
+        "path": "/api/category",
+        "expectedCallsPerVisit": 1,
+        "triggerType": "mount",
+        "notes": "getCategory - called after readProduct"
+      },
+      {
+        "method": "POST",
+        "path": "/api/user/favorite",
+        "expectedCallsPerVisit": 0.1,
+        "triggerType": "conditional",
+        "notes": "toggleFavoriteUser - on heart icon click"
+      },
+      {
+        "method": "POST",
+        "path": "/api/user/cart",
+        "expectedCallsPerVisit": 0.15,
+        "triggerType": "conditional",
+        "notes": "createCartUser - on Buy Now button"
+      }
+    ]
+  }
+]
