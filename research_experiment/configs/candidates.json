@@ -1,0 +1,542 @@
+[
+  {
+    "id": "P01_GetStock",
+    "table": "Product",
+    "index_def": "CREATE INDEX ON \"Product\" (\"id\")",
+    "freq_score": 19,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "getStock",
+    "test_query": "SELECT \"id\", \"quantity\", \"price\", \"promotion\" FROM \"Product\" WHERE \"id\" = 1"
+  },
+  {
+    "id": "P02_GetProductImages",
+    "table": "Product",
+    "index_def": "CREATE INDEX ON \"Product\" (\"id\")",
+    "freq_score": 15,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "getProductImages",
+    "test_query": "SELECT p.\"id\", i.\"id\" as img_id, i.\"url\" FROM \"Product\" p JOIN \"Image\" i ON p.\"id\" = i.\"productId\" WHERE p.\"id\" = 1"
+  },
+  {
+    "id": "P03_UpdateDiscount",
+    "table": "Discount",
+    "index_def": "CREATE INDEX ON \"Discount\" (\"endDate\", \"isActive\")",
+    "freq_score": 12,
+    "rule_applied": "Rule 3 (Composite)",
+    "source_function": "updateDiscount",
+    "test_query": "SELECT * FROM \"Discount\" WHERE \"endDate\" < NOW() AND \"isActive\" = true"
+  },
+  {
+    "id": "P04_ListProdAdmin",
+    "table": "Product",
+    "index_def": "CREATE INDEX ON \"Product\" (\"createdAt\" DESC)",
+    "freq_score": 3,
+    "rule_applied": "Rule 2 (Sort)",
+    "source_function": "listProdAdmin",
+    "test_query": "SELECT * FROM \"Product\" ORDER BY \"createdAt\" DESC LIMIT 100"
+  },
+  {
+    "id": "P05_ListProdAdminPaginated",
+    "table": "Product",
+    "index_def": "CREATE INDEX ON \"Product\" (\"categoryId\" ASC, \"id\" DESC)",
+    "freq_score": 4,
+    "rule_applied": "Rule 3 (Composite)",
+    "source_function": "listProdAdminPaginated",
+    "test_query": "SELECT * FROM \"Product\" ORDER BY \"categoryId\" ASC, \"id\" DESC LIMIT 10 OFFSET 0"
+  },
+  {
+    "id": "P06_SearchProdAdmin",
+    "table": "Product",
+    "index_def": "CREATE INDEX ON \"Product\" (\"title\")",
+    "freq_score": 5,
+    "rule_applied": "Rule 1 (Filter) - Naive B-Tree for text search",
+    "source_function": "searchProdAdmin",
+    "test_query": "SELECT * FROM \"Product\" WHERE LOWER(\"title\") LIKE '%test%' ORDER BY \"createdAt\" DESC, \"id\" DESC"
+  },
+  {
+    "id": "P07_ListProd",
+    "table": "Product",
+    "index_def": "CREATE INDEX ON \"Product\" (\"quantity\", \"createdAt\" DESC)",
+    "freq_score": 18,
+    "rule_applied": "Rule 3 (Composite)",
+    "source_function": "listProd",
+    "test_query": "SELECT * FROM \"Product\" WHERE \"quantity\" >= 1 ORDER BY \"createdAt\" DESC LIMIT 20"
+  },
+  {
+    "id": "P08_ListProdPaginated",
+    "table": "Product",
+    "index_def": "CREATE INDEX ON \"Product\" (\"quantity\", \"createdAt\" DESC)",
+    "freq_score": 15,
+    "rule_applied": "Rule 3 (Composite)",
+    "source_function": "listProdPaginated",
+    "test_query": "SELECT * FROM \"Product\" WHERE \"quantity\" >= 1 ORDER BY \"createdAt\" DESC LIMIT 20 OFFSET 0"
+  },
+  {
+    "id": "P09_ListFlashSaleProducts",
+    "table": "Product",
+    "index_def": "CREATE INDEX ON \"Product\" (\"quantity\")",
+    "freq_score": 20,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "listFlashSaleProducts",
+    "test_query": "SELECT p.* FROM \"Product\" p JOIN \"Discount\" d ON p.\"id\" = d.\"productId\" WHERE p.\"quantity\" >= 1 AND d.\"isActive\" = true AND d.\"startDate\" <= NOW() AND d.\"endDate\" > NOW() ORDER BY p.\"createdAt\" DESC"
+  },
+  {
+    "id": "P10_FlashSaleDiscounts",
+    "table": "Discount",
+    "index_def": "CREATE INDEX ON \"Discount\" (\"isActive\", \"startDate\", \"endDate\")",
+    "freq_score": 20,
+    "rule_applied": "Rule 3 (Composite)",
+    "source_function": "listFlashSaleProducts",
+    "test_query": "SELECT * FROM \"Discount\" WHERE \"isActive\" = true AND \"startDate\" <= NOW() AND \"endDate\" > NOW()"
+  },
+  {
+    "id": "P11_GetProductsByIds",
+    "table": "Product",
+    "index_def": "CREATE INDEX ON \"Product\" (\"id\")",
+    "freq_score": 18,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "getProductsByIds",
+    "test_query": "SELECT * FROM \"Product\" WHERE \"id\" IN (1, 5, 35)"
+  },
+  {
+    "id": "P12_ReadAprod",
+    "table": "Product",
+    "index_def": "CREATE INDEX ON \"Product\" (\"id\")",
+    "freq_score": 15,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "readAprod",
+    "test_query": "SELECT * FROM \"Product\" WHERE \"id\" = 1"
+  },
+  {
+    "id": "P13_ProductOnOrderByProductId",
+    "table": "ProductOnOrder",
+    "index_def": "CREATE INDEX ON \"ProductOnOrder\" (\"productId\")",
+    "freq_score": 15,
+    "rule_applied": "Rule 4 (Join/FK)",
+    "source_function": "readAprod",
+    "test_query": "SELECT poo.*, o.\"createdAt\" FROM \"ProductOnOrder\" poo JOIN \"Order\" o ON poo.\"orderId\" = o.\"id\" WHERE poo.\"productId\" = 1 ORDER BY o.\"createdAt\" DESC"
+  },
+  {
+    "id": "P14_DisplayProdBy",
+    "table": "Product",
+    "index_def": "CREATE INDEX ON \"Product\" (\"quantity\", \"sold\" DESC)",
+    "freq_score": 14,
+    "rule_applied": "Rule 3 (Composite)",
+    "source_function": "displayProdBy",
+    "test_query": "SELECT * FROM \"Product\" WHERE \"quantity\" > 0 ORDER BY \"sold\" DESC LIMIT 10"
+  },
+  {
+    "id": "P15_DisplayProdByUser_Orders",
+    "table": "Order",
+    "index_def": "CREATE INDEX ON \"Order\" (\"orderedById\", \"status\")",
+    "freq_score": 12,
+    "rule_applied": "Rule 3 (Composite)",
+    "source_function": "displayProdByUser",
+    "test_query": "SELECT * FROM \"Order\" WHERE \"orderedById\" = 1 AND (\"status\" = 'succeeded' OR \"orderStatus\" = 'Completed')"
+  },
+  {
+    "id": "P16_DisplayProdByUserCategory",
+    "table": "Product",
+    "index_def": "CREATE INDEX ON \"Product\" (\"categoryId\", \"quantity\", \"updatedAt\" DESC)",
+    "freq_score": 12,
+    "rule_applied": "Rule 3 (Composite)",
+    "source_function": "displayProdByUser",
+    "test_query": "SELECT * FROM \"Product\" WHERE \"categoryId\" = 1 AND \"quantity\" > 0 ORDER BY \"updatedAt\" DESC LIMIT 2"
+  },
+  {
+    "id": "P17_SearchFiltersTitle",
+    "table": "Product",
+    "index_def": "CREATE INDEX ON \"Product\" (\"title\")",
+    "freq_score": 14,
+    "rule_applied": "Rule 1 (Filter) - Naive B-Tree for text search",
+    "source_function": "searchFilters",
+    "test_query": "SELECT * FROM \"Product\" WHERE LOWER(\"title\") LIKE '%laptop%'"
+  },
+  {
+    "id": "P18_SearchFiltersCategory",
+    "table": "Product",
+    "index_def": "CREATE INDEX ON \"Product\" (\"categoryId\")",
+    "freq_score": 14,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "searchFilters",
+    "test_query": "SELECT * FROM \"Product\" WHERE \"categoryId\" IN (1, 7)"
+  },
+  {
+    "id": "P19_SearchFiltersPrice",
+    "table": "Product",
+    "index_def": "CREATE INDEX ON \"Product\" (\"price\")",
+    "freq_score": 14,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "searchFilters",
+    "test_query": "SELECT * FROM \"Product\" WHERE \"price\" >= 0 AND \"price\" <= 100"
+  },
+  {
+    "id": "P20_SearchFiltersBrand",
+    "table": "Product",
+    "index_def": "CREATE INDEX ON \"Product\" (\"brandId\")",
+    "freq_score": 14,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "searchFilters",
+    "test_query": "SELECT * FROM \"Product\" WHERE \"brandId\" IN (1, 2)"
+  },
+  {
+    "id": "P21_BulkDiscountProducts",
+    "table": "Product",
+    "index_def": "CREATE INDEX ON \"Product\" (\"id\")",
+    "freq_score": 3,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "bulkDiscount",
+    "test_query": "UPDATE \"Product\" SET \"promotion\" = 10 WHERE \"id\" IN (1, 2, 3)"
+  },
+  {
+    "id": "P22_BulkDiscountDiscount",
+    "table": "Discount",
+    "index_def": "CREATE INDEX ON \"Discount\" (\"productId\")",
+    "freq_score": 3,
+    "rule_applied": "Rule 4 (Join/FK)",
+    "source_function": "bulkDiscount",
+    "test_query": "DELETE FROM \"Discount\" WHERE \"productId\" IN (1, 2, 3)"
+  },
+  {
+    "id": "P23_ChangeStatusDiscount",
+    "table": "Discount",
+    "index_def": "CREATE INDEX ON \"Discount\" (\"productId\")",
+    "freq_score": 2,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "changeStatusDiscount",
+    "test_query": "UPDATE \"Discount\" SET \"isActive\" = false WHERE \"productId\" IN (1, 2)"
+  },
+  {
+    "id": "U01_CreateUserCartUser",
+    "table": "User",
+    "index_def": "CREATE INDEX ON \"User\" (\"id\")",
+    "freq_score": 20,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "createUserCart",
+    "test_query": "SELECT * FROM \"User\" WHERE \"id\" = 1"
+  },
+  {
+    "id": "U02_CreateUserCartProduct",
+    "table": "Product",
+    "index_def": "CREATE INDEX ON \"Product\" (\"id\")",
+    "freq_score": 20,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "createUserCart",
+    "test_query": "SELECT \"quantity\", \"title\" FROM \"Product\" WHERE \"id\" = 1"
+  },
+  {
+    "id": "U03_CreateUserCartFindCart",
+    "table": "Cart",
+    "index_def": "CREATE INDEX ON \"Cart\" (\"orderedById\")",
+    "freq_score": 20,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "createUserCart",
+    "test_query": "SELECT * FROM \"Cart\" WHERE \"orderedById\" = 1"
+  },
+  {
+    "id": "U04_ProductOnCartUpsert",
+    "table": "ProductOnCart",
+    "index_def": "CREATE INDEX ON \"ProductOnCart\" (\"cartId\", \"productId\")",
+    "freq_score": 20,
+    "rule_applied": "Rule 3 (Composite)",
+    "source_function": "createUserCart",
+    "test_query": "SELECT * FROM \"ProductOnCart\" WHERE \"cartId\" = 1 AND \"productId\" = 5"
+  },
+  {
+    "id": "U05_ProductOnCartDeleteNotIn",
+    "table": "ProductOnCart",
+    "index_def": "CREATE INDEX ON \"ProductOnCart\" (\"cartId\")",
+    "freq_score": 19,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "createUserCart",
+    "test_query": "DELETE FROM \"ProductOnCart\" WHERE \"cartId\" = 1 AND \"productId\" NOT IN (1, 2, 3)"
+  },
+  {
+    "id": "U06_GetUserCart",
+    "table": "Cart",
+    "index_def": "CREATE INDEX ON \"Cart\" (\"orderedById\")",
+    "freq_score": 18,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "getUserCart",
+    "test_query": "SELECT * FROM \"Cart\" WHERE \"orderedById\" = 1"
+  },
+  {
+    "id": "U07_ClearCart",
+    "table": "Cart",
+    "index_def": "CREATE INDEX ON \"Cart\" (\"orderedById\")",
+    "freq_score": 15,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "clearCart",
+    "test_query": "DELETE FROM \"Cart\" WHERE \"orderedById\" = 1"
+  },
+  {
+    "id": "U08_SaveAddressUser",
+    "table": "User",
+    "index_def": "CREATE INDEX ON \"User\" (\"id\")",
+    "freq_score": 8,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "saveAddress",
+    "test_query": "UPDATE \"User\" SET \"address\" = 'New Address' WHERE \"id\" = 1"
+  },
+  {
+    "id": "U09_SaveOrderCart",
+    "table": "Cart",
+    "index_def": "CREATE INDEX ON \"Cart\" (\"orderedById\")",
+    "freq_score": 19,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "saveOrder",
+    "test_query": "SELECT * FROM \"Cart\" WHERE \"orderedById\" = 1"
+  },
+  {
+    "id": "U10_SaveOrderProduct",
+    "table": "Product",
+    "index_def": "CREATE INDEX ON \"Product\" (\"id\")",
+    "freq_score": 19,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "saveOrder",
+    "test_query": "SELECT \"quantity\", \"title\" FROM \"Product\" WHERE \"id\" = 1"
+  },
+  {
+    "id": "U11_GetOrder",
+    "table": "Order",
+    "index_def": "CREATE INDEX ON \"Order\" (\"orderedById\", \"createdAt\" DESC)",
+    "freq_score": 15,
+    "rule_applied": "Rule 3 (Composite)",
+    "source_function": "getOrder",
+    "test_query": "SELECT * FROM \"Order\" WHERE \"orderedById\" = 1 ORDER BY \"createdAt\" DESC"
+  },
+  {
+    "id": "U12_GetOrderPaginated",
+    "table": "Order",
+    "index_def": "CREATE INDEX ON \"Order\" (\"orderedById\", \"createdAt\" DESC)",
+    "freq_score": 15,
+    "rule_applied": "Rule 3 (Composite)",
+    "source_function": "getOrderPaginated",
+    "test_query": "SELECT * FROM \"Order\" WHERE \"orderedById\" = 1 ORDER BY \"createdAt\" DESC LIMIT 20 OFFSET 0"
+  },
+  {
+    "id": "U13_AddProdRatingGroupBy",
+    "table": "Rating",
+    "index_def": "CREATE INDEX ON \"Rating\" (\"productId\")",
+    "freq_score": 10,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "addProdRating",
+    "test_query": "SELECT \"productId\", AVG(\"rating\") as avg_rating, COUNT(*) FROM \"Rating\" WHERE \"productId\" IN (1, 2) GROUP BY \"productId\""
+  },
+  {
+    "id": "U14_FavoriteProductCheck",
+    "table": "Product",
+    "index_def": "CREATE INDEX ON \"Product\" (\"id\")",
+    "freq_score": 16,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "favoriteProduct",
+    "test_query": "SELECT * FROM \"Product\" WHERE \"id\" = 1"
+  },
+  {
+    "id": "U15_FavoriteLimitCheck",
+    "table": "Favorite",
+    "index_def": "CREATE INDEX ON \"Favorite\" (\"userId\")",
+    "freq_score": 16,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "favoriteProduct",
+    "test_query": "SELECT * FROM \"Favorite\" WHERE \"userId\" = 1 LIMIT 5"
+  },
+  {
+    "id": "U16_FavoriteExist",
+    "table": "Favorite",
+    "index_def": "CREATE INDEX ON \"Favorite\" (\"userId\", \"productId\")",
+    "freq_score": 16,
+    "rule_applied": "Rule 3 (Composite)",
+    "source_function": "favoriteProduct",
+    "test_query": "SELECT * FROM \"Favorite\" WHERE \"userId\" = 1 AND \"productId\" = 5"
+  },
+  {
+    "id": "A01_ChangeUserStatus",
+    "table": "User",
+    "index_def": "CREATE INDEX ON \"User\" (\"id\")",
+    "freq_score": 2,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "changeUserStatus",
+    "test_query": "UPDATE \"User\" SET \"enabled\" = true, \"role\" = 'admin' WHERE \"id\" IN (1, 2)"
+  },
+  {
+    "id": "A02_ChangeOrderStatus",
+    "table": "Order",
+    "index_def": "CREATE INDEX ON \"Order\" (\"id\")",
+    "freq_score": 3,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "changeOrderStatus",
+    "test_query": "UPDATE \"Order\" SET \"orderStatus\" = 'Completed' WHERE \"id\" IN (1, 2)"
+  },
+  {
+    "id": "A03_GetOrderAdminPaginated",
+    "table": "Order",
+    "index_def": "CREATE INDEX ON \"Order\" (\"createdAt\" DESC, \"id\" DESC)",
+    "freq_score": 4,
+    "rule_applied": "Rule 2 (Sort)",
+    "source_function": "getOrderAdminPaginated",
+    "test_query": "SELECT * FROM \"Order\" ORDER BY \"createdAt\" DESC, \"id\" DESC LIMIT 20 OFFSET 0"
+  },
+  {
+    "id": "AU01_RegisterCheckEmail",
+    "table": "User",
+    "index_def": "CREATE INDEX ON \"User\" (\"email\")",
+    "freq_score": 10,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "register",
+    "test_query": "SELECT * FROM \"User\" WHERE \"email\" = 'test@example.com'"
+  },
+  {
+    "id": "AU02_LoginCheckEmail",
+    "table": "User",
+    "index_def": "CREATE INDEX ON \"User\" (\"email\")",
+    "freq_score": 12,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "logIn",
+    "test_query": "SELECT * FROM \"User\" WHERE \"email\" = 'test@example.com'"
+  },
+  {
+    "id": "AU03_CurrUserProfile",
+    "table": "User",
+    "index_def": "CREATE INDEX ON \"User\" (\"email\")",
+    "freq_score": 10,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "currUserProfile",
+    "test_query": "SELECT \"id\", \"email\", \"role\" FROM \"User\" WHERE \"email\" = 'test@example.com'"
+  },
+  {
+    "id": "BR01_CreateBrandCheck",
+    "table": "Brand",
+    "index_def": "CREATE INDEX ON \"Brand\" (\"title\")",
+    "freq_score": 2,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "createBrand",
+    "test_query": "SELECT * FROM \"Brand\" WHERE \"title\" = 'Nike'"
+  },
+  {
+    "id": "BR02_UpdateBrand",
+    "table": "Brand",
+    "index_def": "CREATE INDEX ON \"Brand\" (\"id\")",
+    "freq_score": 2,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "updateBrand",
+    "test_query": "UPDATE \"Brand\" SET \"title\" = 'Adidas' WHERE \"id\" = 1"
+  },
+  {
+    "id": "BR03_ListBrand",
+    "table": "Brand",
+    "index_def": "CREATE INDEX ON \"Brand\" (\"id\" ASC)",
+    "freq_score": 12,
+    "rule_applied": "Rule 2 (Sort)",
+    "source_function": "listBrand",
+    "test_query": "SELECT * FROM \"Brand\" ORDER BY \"id\" ASC"
+  },
+  {
+    "id": "BR04_RemoveBrand",
+    "table": "Brand",
+    "index_def": "CREATE INDEX ON \"Brand\" (\"id\")",
+    "freq_score": 2,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "removeBrand",
+    "test_query": "DELETE FROM \"Brand\" WHERE \"id\" = 1"
+  },
+  {
+    "id": "CA01_RemoveCategory",
+    "table": "Category",
+    "index_def": "CREATE INDEX ON \"Category\" (\"id\")",
+    "freq_score": 2,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "removeCategory",
+    "test_query": "DELETE FROM \"Category\" WHERE \"id\" = 1"
+  },
+  {
+    "id": "CA02_UpdateCategory",
+    "table": "Category",
+    "index_def": "CREATE INDEX ON \"Category\" (\"id\")",
+    "freq_score": 2,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "updateCategory",
+    "test_query": "UPDATE \"Category\" SET \"name\" = 'Electronics' WHERE \"id\" = 1"
+  },
+  {
+    "id": "PA01_CreatePaymentCart",
+    "table": "Cart",
+    "index_def": "CREATE INDEX ON \"Cart\" (\"orderedById\")",
+    "freq_score": 19,
+    "rule_applied": "Rule 1 (Filter)",
+    "source_function": "createPayment",
+    "test_query": "SELECT * FROM \"Cart\" WHERE \"orderedById\" = 1"
+  },
+  {
+    "id": "PA02_ReqRefundOrder",
+    "table": "Order",
+    "index_def": "CREATE INDEX ON \"Order\" (\"id\", \"orderStatus\", \"createdAt\")",
+    "freq_score": 8,
+    "rule_applied": "Rule 3 (Composite)",
+    "source_function": "reqRefund",
+    "test_query": "SELECT * FROM \"Order\" WHERE \"id\" = 1 AND \"orderStatus\" = 'Completed' AND \"createdAt\" >= (NOW() - INTERVAL '3 days')"
+  },
+  {
+    "id": "FK01_ImageProductId",
+    "table": "Image",
+    "index_def": "CREATE INDEX ON \"Image\" (\"productId\")",
+    "freq_score": 15,
+    "rule_applied": "Rule 4 (Join/FK)",
+    "source_function": "Various (include images)",
+    "test_query": "SELECT * FROM \"Image\" WHERE \"productId\" = 1"
+  },
+  {
+    "id": "FK02_DiscountProductId",
+    "table": "Discount",
+    "index_def": "CREATE INDEX ON \"Discount\" (\"productId\")",
+    "freq_score": 18,
+    "rule_applied": "Rule 4 (Join/FK)",
+    "source_function": "Various (include discounts)",
+    "test_query": "SELECT * FROM \"Discount\" WHERE \"productId\" = 1"
+  },
+  {
+    "id": "FK03_FavoriteProductId",
+    "table": "Favorite",
+    "index_def": "CREATE INDEX ON \"Favorite\" (\"productId\")",
+    "freq_score": 14,
+    "rule_applied": "Rule 4 (Join/FK)",
+    "source_function": "Various (include favorites)",
+    "test_query": "SELECT * FROM \"Favorite\" WHERE \"productId\" = 1"
+  },
+  {
+    "id": "FK04_RatingProductId",
+    "table": "Rating",
+    "index_def": "CREATE INDEX ON \"Rating\" (\"productId\")",
+    "freq_score": 12,
+    "rule_applied": "Rule 4 (Join/FK)",
+    "source_function": "Various (include ratings)",
+    "test_query": "SELECT * FROM \"Rating\" WHERE \"productId\" = 1"
+  },
+  {
+    "id": "FK05_ProductOnCartCartId",
+    "table": "ProductOnCart",
+    "index_def": "CREATE INDEX ON \"ProductOnCart\" (\"cartId\")",
+    "freq_score": 18,
+    "rule_applied": "Rule 4 (Join/FK)",
+    "source_function": "Various (include products on cart)",
+    "test_query": "SELECT * FROM \"ProductOnCart\" WHERE \"cartId\" = 1"
+  },
+  {
+    "id": "FK06_ProductOnOrderOrderId",
+    "table": "ProductOnOrder",
+    "index_def": "CREATE INDEX ON \"ProductOnOrder\" (\"orderId\")",
+    "freq_score": 12,
+    "rule_applied": "Rule 4 (Join/FK)",
+    "source_function": "Various (include products on order)",
+    "test_query": "SELECT * FROM \"ProductOnOrder\" WHERE \"orderId\" = 1"
+  },
+  {
+    "id": "FK07_OrderOrderedById",
+    "table": "Order",
+    "index_def": "CREATE INDEX ON \"Order\" (\"orderedById\")",
+    "freq_score": 15,
+    "rule_applied": "Rule 4 (Join/FK)",
+    "source_function": "Various (user orders)",
+    "test_query": "SELECT * FROM \"Order\" WHERE \"orderedById\" = 1"
+  }
+]

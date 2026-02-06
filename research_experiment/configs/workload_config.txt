@@ -1,0 +1,302 @@
+Workload Configuration
+[
+{
+phase: 1,
+scenario: "Off-peak (Browsing Mix)",
+condition_code: "WIPSb",
+virtual_users: 20,
+read_ratio: 95,
+write_ratio: 5,
+ramp_up: "5 min",
+think_time_range(use Math.random): "5-10s",
+peak_load_percentage: 10,
+time_period: "เช้า/ดึก",
+behavior_note: "เน้นการดูข้อมูล สินค้าคงคลัง และรีวิว - คนใจเย็น ไม่รีบซื้อ",
+expected_cart_behavior: "Browse 3-5 items, ซื้อ 1-3 items - มีเวลาคิด",
+
+connection_pool: {
+size: 20,
+vu_to_pool_ratio: "1:1",
+constraint_level: "None",
+rationale: "Neon Free Tier constraint - fixed pool size across all phases",
+expected_wait_time: "~0ms",
+expected_queue_length: "0",
+expected_utilization: "~100% (20/20 connections used)",
+expected_impact: "No bottleneck - baseline performance measurement"
+},
+
+metrics_to_collect: {
+connection_wait_time_ms: {
+description: "เวลารอ connection ว่าง (milliseconds)",
+source: "PgBouncer logs or k6 custom metric",
+expected_value: "~0ms",
+alert_threshold: ">50ms"
+},
+connection_queue_length: {
+description: "จำนวน request ที่รอ connection",
+source: "PgBouncer SHOW POOLS (cl_waiting)",
+expected_value: "0",
+alert_threshold: ">5"
+},
+connection_utilization_percent: {
+description: "% ของ pool ที่ถูกใช้งาน",
+source: "PgBouncer SHOW POOLS (cl_active / maxwait)",
+expected_value: "~100%",
+alert_threshold: "N/A"
+},
+timeout_errors_count: {
+description: "จำนวน connection timeout errors",
+source: "k6 error counter",
+expected_value: "0",
+alert_threshold: ">0"
+},
+active_connections: {
+description: "จำนวน connection ที่ active ขณะนั้น",
+source: "PgBouncer SHOW POOLS (cl_active)",
+expected_value: "15-20",
+alert_threshold: "N/A"
+}
+},
+
+data_distribution: {
+zipf_skew_read: 0.6,
+zipf_skew_write: 0.5,
+zipf_interpretation: "การกระจายตัวมาก - คนดูสินค้าหลากหลาย",
+cart_size_lambda_read: 4,
+cart_size_lambda_write: 2,
+cart_size_interpretation: "Browse มาก (avg 3-5 items), ซื้อน้อย (avg 1-3 items)"
+},
+
+expected_performance: {
+estimated_rps: "3-5 requests/sec",
+estimated_response_time_p95: "<100ms",
+estimated_error_rate: "<0.1%",
+primary_bottleneck: "None - baseline measurement"
+}
+},
+
+{
+phase: 2,
+scenario: "Normal (Shopping Mix)",
+condition_code: "WIPS",
+virtual_users: 100,
+read_ratio: 80,
+write_ratio: 20,
+ramp_up: "5 min",
+think_time_range(use Math.random): "3-5s",
+peak_load_percentage: 50,
+time_period: "เวลางาน",
+behavior_note: "พฤติกรรมการซื้อขายปกติ - ดูแล้วค่อยซื้อ",
+expected_cart_behavior: "Browse 2-4 items, ซื้อ 1-3 items - พฤติกรรมปกติ",
+
+connection_pool: {
+size: 20,
+vu_to_pool_ratio: "5:1",
+constraint_level: "Moderate",
+rationale: "5 VUs competing for 1 connection - moderate queuing begins",
+expected_wait_time: "<100ms",
+expected_queue_length: "0-5",
+expected_utilization: "100% (saturated)",
+expected_impact: "Moderate queuing - connection pool becomes visible bottleneck"
+},
+
+metrics_to_collect: {
+connection_wait_time_ms: {
+description: "เวลารอ connection ว่าง (milliseconds)",
+source: "PgBouncer logs or k6 custom metric",
+expected_value: "20-80ms",
+alert_threshold: ">150ms"
+},
+connection_queue_length: {
+description: "จำนวน request ที่รอ connection",
+source: "PgBouncer SHOW POOLS (cl_waiting)",
+expected_value: "2-5",
+alert_threshold: ">10"
+},
+connection_utilization_percent: {
+description: "% ของ pool ที่ถูกใช้งาน",
+source: "PgBouncer SHOW POOLS (cl_active / maxwait)",
+expected_value: "100% (saturated)",
+alert_threshold: "N/A"
+},
+timeout_errors_count: {
+description: "จำนวน connection timeout errors",
+source: "k6 error counter",
+expected_value: "0-2 (occasional)",
+alert_threshold: ">5"
+},
+active_connections: {
+description: "จำนวน connection ที่ active ขณะนั้น",
+source: "PgBouncer SHOW POOLS (cl_active)",
+expected_value: "20 (fully utilized)",
+alert_threshold: "N/A"
+}
+},
+
+data_distribution: {
+zipf_skew_read: 0.75,
+zipf_skew_write: 0.7,
+zipf_interpretation: "การกระจายตัวปานกลาง - มีสินค้ายอดนิยมแต่ยังมี long tail",
+cart_size_lambda_read: 3,
+cart_size_lambda_write: 2,
+cart_size_interpretation: "Browse ปานกลาง (avg 2-4 items), ซื้อปานกลาง (avg 1-3 items)"
+},
+
+expected_performance: {
+estimated_rps: "15-20 requests/sec",
+estimated_response_time_p95: "150-300ms",
+estimated_error_rate: "<1%",
+primary_bottleneck: "Connection pool saturation - queuing begins"
+}
+},
+
+{
+phase: 3,
+scenario: "Peak (Shopping Mix)",
+condition_code: "WIPS",
+virtual_users: 300,
+read_ratio: 80,
+write_ratio: 20,
+ramp_up: "2 min",
+think_time_range(use Math.random): "1-3s",
+peak_load_percentage: 80,
+time_period: "หลังเลิกงาน",
+behavior_note: "พฤติกรรมการซื้อขายสูง - คนเริ่มเยอะ รีบดู รีบตัดสินใจ",
+expected_cart_behavior: "Browse 1-3 items, ซื้อ 1-3 items - รู้ใจแล้ว",
+
+connection_pool: {
+size: 20,
+vu_to_pool_ratio: "15:1",
+constraint_level: "High",
+rationale: "15 VUs competing for 1 connection - significant queuing",
+expected_wait_time: "200-500ms",
+expected_queue_length: "5-15",
+expected_utilization: "100% (saturated)",
+expected_impact: "Significant queuing - connection pool is PRIMARY bottleneck"
+},
+
+metrics_to_collect: {
+connection_wait_time_ms: {
+description: "เวลารอ connection ว่าง (milliseconds)",
+source: "PgBouncer logs or k6 custom metric",
+expected_value: "200-500ms",
+alert_threshold: ">800ms"
+},
+connection_queue_length: {
+description: "จำนวน request ที่รอ connection",
+source: "PgBouncer SHOW POOLS (cl_waiting)",
+expected_value: "8-15",
+alert_threshold: ">20"
+},
+connection_utilization_percent: {
+description: "% ของ pool ที่ถูกใช้งาน",
+source: "PgBouncer SHOW POOLS (cl_active / maxwait)",
+expected_value: "100% (saturated)",
+alert_threshold: "N/A"
+},
+timeout_errors_count: {
+description: "จำนวน connection timeout errors",
+source: "k6 error counter",
+expected_value: "5-15 (noticeable)",
+alert_threshold: ">25"
+},
+active_connections: {
+description: "จำนวน connection ที่ active ขณะนั้น",
+source: "PgBouncer SHOW POOLS (cl_active)",
+expected_value: "20 (fully utilized)",
+alert_threshold: "N/A"
+}
+},
+
+data_distribution: {
+zipf_skew_read: 0.9,
+zipf_skew_write: 0.85,
+zipf_interpretation: "Concentrated - สินค้าฮิตครอบงำ 80-90% ของ traffic",
+cart_size_lambda_read: 2,
+cart_size_lambda_write: 2,
+cart_size_interpretation: "Browse น้อยลง (avg 1-3 items), ซื้อเท่าเดิม (avg 1-3 items)"
+},
+
+expected_performance: {
+estimated_rps: "45-60 requests/sec",
+estimated_response_time_p95: "500-1000ms",
+estimated_error_rate: "1-3%",
+primary_bottleneck: "Connection pool saturation - dominant performance limiter"
+}
+},
+
+{
+phase: 4,
+scenario: "Flash Sale (Ordering Mix)",
+condition_code: "WIPSo",
+virtual_users: 1000,
+read_ratio: 50,
+write_ratio: 50,
+ramp_up: "30s",
+think_time_range(use Math.random): "0.5-1.5s",
+peak_load_percentage: 100,
+time_period: "Flash Sale",
+behavior_note: "เน้นการทำธุรกรรมและจ่ายเงิน - คนแย่งกันกด แทบไม่คิด (Panic Buying)",
+expected_cart_behavior: "Browse minimal (แค่ flash item), ซื้อ 2-4 items - panic buying พฤติกรรม realistic, ใช้ Bot กดซื้อ",
+
+connection_pool: {
+size: 20,
+vu_to_pool_ratio: "50:1",
+constraint_level: "Severe",
+rationale: "50 VUs competing for 1 connection - extreme connection starvation",
+expected_wait_time: ">1000ms",
+expected_queue_length: ">20",
+expected_utilization: "100% (saturated)",
+expected_impact: "SEVERE queuing - connection pool creates artificial system bottleneck. This is the research focus: measuring system behavior under extreme resource constraint."
+},
+
+metrics_to_collect: {
+connection_wait_time_ms: {
+description: "เวลารอ connection ว่าง (milliseconds)",
+source: "PgBouncer logs or k6 custom metric",
+expected_value: ">1000ms (1+ seconds)",
+alert_threshold: ">3000ms"
+},
+connection_queue_length: {
+description: "จำนวน request ที่รอ connection",
+source: "PgBouncer SHOW POOLS (cl_waiting)",
+expected_value: ">20 (severe backlog)",
+alert_threshold: ">50"
+},
+connection_utilization_percent: {
+description: "% ของ pool ที่ถูกใช้งาน",
+source: "PgBouncer SHOW POOLS (cl_active / maxwait)",
+expected_value: "100% (saturated)",
+alert_threshold: "N/A"
+},
+timeout_errors_count: {
+description: "จำนวน connection timeout errors",
+source: "k6 error counter",
+expected_value: ">50 (significant failures)",
+alert_threshold: ">100"
+},
+active_connections: {
+description: "จำนวน connection ที่ active ขณะนั้น",
+source: "PgBouncer SHOW POOLS (cl_active)",
+expected_value: "20 (fully utilized)",
+alert_threshold: "N/A"
+}
+},
+
+data_distribution: {
+zipf_skew_read: 0.95,
+zipf_skew_write: 0.95,
+zipf_interpretation: "Extreme concentration - ทุกคนโฟกัสที่สินค้า flash เท่านั้น",
+cart_size_lambda_read: 1,
+cart_size_lambda_write: 3,
+cart_size_interpretation: "Browse minimal (avg 1 item - แค่ flash item), ซื้อเยอะ (avg 2-4 items - panic buying)"
+},
+
+expected_performance: {
+estimated_rps: "150-200 requests/sec (attempted)",
+estimated_response_time_p95: ">2000ms",
+estimated_error_rate: "5-15% (connection timeouts)",
+primary_bottleneck: "Connection pool starvation - EXTREME bottleneck dominates all performance metrics"
+}
+}
+]

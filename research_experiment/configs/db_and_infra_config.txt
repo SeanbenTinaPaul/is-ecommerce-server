@@ -1,0 +1,213 @@
+สรปุ Database and Infra config
+[
+{
+category: "Dataset Sizing",
+constraint: "Neon Free Tier: พื้นที่ว่างเหลือ > 400 MB (ปลอดภัยสำหรับ Run Test)",
+total_storage_limit: "500 MB",
+parameters: [
+{
+parameter_name: "Users Count",
+table_name: "User",
+recommended_value: "10,000 rows",
+ideal_value_unlimited: "200,000 rows",
+rationale: "เหมาะสมกับ Neon Free Tier (500MB), realistic cardinality สำหรับ e-commerce",
+estimated_size: "~15 MB",
+reset_strategy: "N/A (Dimension table - ไม่ต้อง reset)",
+"สถานะ script": "มีแล้ว",
+"สถานะ seed data" : "seed แล้ว"
+},
+{
+parameter_name: "Products Count",
+table_name: "Product",
+recommended_value: "10,000 rows",
+ideal_value_unlimited: "20,000 rows",
+rationale: "รองรับการกระจายตัวแบบ Zipfian ได้ดี, supports Zipfian long tail",
+estimated_size: "~20 MB",
+reset_strategy: "N/A (Dimension table - ไม่ต้อง reset)"
+"สถานะ script": "มีแล้ว",
+"สถานะ seed data" : "seed แล้ว"
+},
+{
+parameter_name: "Orders Count",
+table_name: "Order",
+recommended_value: "50,000 rows",
+ideal_value_unlimited: "50,000 rows",
+rationale: "Fact table ขนาดเหมาะสมสำหรับวัดผล Query Plan และ Index Performance",
+estimated_size: "~50 MB (including indexes)",
+reset_strategy: "TRUNCATE TABLE \"Order\" CASCADE",
+reset_rationale: "ป้องกัน Table Bloat และ WAL เต็ม, reset หลังแต่ละ Phase",
+"สถานะ script": "ยังไม่มี",
+"สถานะ seed data" : "ยังไม่ seed"
+},
+{
+parameter_name: "Order Items Count",
+table_name: "ProductOnOrder",
+recommended_value: "150,000 rows",
+ideal_value_unlimited: "2,500,000 rows",
+rationale: "Fact table หลักสำหรับการทดสอบ Index Performance, >100K rows ถือว่าเป็น standard fact table size",
+estimated_size: "~200 MB (including indexes)",
+reset_strategy: "TRUNCATE TABLE \"ProductOnOrder\" CASCADE",
+reset_rationale: "ป้องกัน Table Bloat และ WAL เต็ม, reset หลังแต่ละ Phase",
+"สถานะ script": "ยังไม่มี",
+"สถานะ seed data" : "ยังไม่ seed"
+}
+],
+total_estimated_size: "~285 MB (ปลอดภัย < 400 MB threshold)",
+safety_margin: "215 MB available for growth and temp data"
+},
+{
+category: "Workload Configuration",
+parameters: [
+{
+parameter_name: "Read/Write Ratio",
+phase_1_off_peak: "95:5",
+phase_2_normal: "80:20",
+phase_3_peak: "80:20",
+phase_4_flash_sale: "50:50",
+rationale: "Flash Sale (50:50) simulates \"Check-out Storm\" behavior"
+},
+{
+parameter_name: "Request Rate (RPS)",
+measurement_method: "k6 ยิง Traffic จำลอง",
+phase_1_off_peak: "~3-5 RPS",
+phase_2_normal: "~15-20 RPS",
+phase_3_peak: "~45-60 RPS",
+phase_4_flash_sale: "~150-200 RPS",
+constraint: "Limited by 0.25 vCPU",
+rationale: "RPS คำนวณจาก (VUs × (1 / avg_think_time))"
+}
+]
+},
+{
+category: "Data Distribution",
+parameters: [
+{
+parameter_name: "Product Selection Skew (Zipf α)",
+phase_1_read: 0.6,
+phase_1_write: 0.5,
+phase_2_read: 0.75,
+phase_2_write: 0.7,
+phase_3_read: 0.9,
+phase_3_write: 0.85,
+phase_4_read: 0.95,
+phase_4_write: 0.95,
+rationale: "Mobile/Flash Sale behavior - สินค้ายอดนิยมถูก access บ่อยกว่า (Power Law Distribution)",
+interpretation: "α càng สูง = การกระจุกตัวที่สินค้า top มากขึ้น"
+},
+{
+parameter_name: "Order Size Distribution (Cart Size)",
+distribution_type: "Poisson",
+phase_1_read_lambda: 4,
+phase_1_write_lambda: 2,
+phase_2_read_lambda: 3,
+phase_2_write_lambda: 2,
+phase_3_read_lambda: 2,
+phase_3_write_lambda: 2,
+phase_4_read_lambda: 1,
+phase_4_write_lambda: 3,
+rationale: "Typical cart size behavior - Flash Sale มี panic buying (λ=3 = avg 2-4 items)",
+interpretation: "λ = ค่าเฉลี่ยจำนวน items ใน cart ต่อ transaction"
+}
+]
+},
+{
+category: "Infrastructure (Database)",
+neon_free_tier_specs: {
+cpu: "0.25 vCPU (shared)",
+ram: "1 GB (shared)",
+storage: "500 MB",
+compute_time: "191.9 hours/month",
+concurrent_connections: "20 (hard limit)"
+},
+parameters: [
+{
+parameter_name: "Max Parallel Workers",
+postgres_setting: "max_parallel_workers_per_gather",
+recommended_value: 0,
+default_value: 2,
+rationale: "Disable parallel query execution เพื่อลด context switching overhead บน 0.25 vCPU",
+implementation: "SET max_parallel_workers_per_gather = 0;"
+},
+{
+parameter_name: "Connection Pool Size",
+pooler_type: "PgBouncer (Transaction Mode)",
+recommended_value: 20,
+fixed_across_all_phases: true,
+neon_connection_string_format: "postgres://user:pass@ep-xxx-pooler.us-east-2.aws.neon.tech/db",
+critical_note: "ต้องใช้ Endpoint ที่มีคำว่า '-pooler' เสมอ",
+rationale: "ป้องกัน Database ล่มจาก Connection Storm และ CPU saturation from forking",
+vu_to_pool_ratio: {
+phase_1: "1:1 (20 VUs : 20 connections)",
+phase_2: "5:1 (100 VUs : 20 connections)",
+phase_3: "15:1 (300 VUs : 20 connections)",
+phase_4: "50:1 (1000 VUs : 20 connections)"
+},
+expected_impact: "Connection queuing becomes bottleneck starting Phase 2"
+},
+{
+parameter_name: "Connection Pool Mode",
+recommended_value: "Transaction",
+alternative: "Session (not recommended for high concurrency)",
+rationale: "Transaction mode รองรับ Concurrent Users จำนวนมากได้ดีกว่า Session mode",
+implementation: "ตั้งค่าใน Neon Dashboard หรือ PgBouncer config"
+}
+]
+},
+{
+category: "Test Execution Strategy",
+pre_test_setup: [
+{
+step: 1,
+action: "Verify Storage Space",
+command: "SELECT pg_database_size(current_database()) / 1024 / 1024 AS size_mb;",
+threshold: "< 400 MB",
+if_exceeded: "ต้อง TRUNCATE fact tables และ re-seed"
+},
+{
+step: 2,
+action: "Disable Parallel Workers",
+command: "SET max_parallel_workers_per_gather = 0;",
+scope: "Session-level (ต้องรันทุกครั้งที่เชื่อมต่อใหม่)"
+},
+{
+step: 3,
+action: "Verify Connection Pool",
+check: "Connection string มี '-pooler' หรือไม่",
+required: "Yes - ต้องมี"
+}
+],
+between_phases_cleanup: [
+{
+step: 1,
+action: "Truncate Fact Tables",
+commands: [
+TRUNCATE TABLE \ProductOnOrder\" CASCADE;",
+TRUNCATE TABLE \Order\" CASCADE;"
+],
+reason: "ป้องกัน Table Bloat และ WAL เต็ม"
+},
+{
+step: 2,
+action: "Re-seed Initial Data",
+orders_count: "50,000 rows",
+order_items_count: "150,000 rows",
+method: "Run seeding script with Poisson(λ=3) distribution"
+},
+{
+step: 3,
+action: "Verify Storage",
+command: "SELECT pg_database_size(current_database()) / 1024 / 1024 AS size_mb;",
+expected: "~285 MB (back to baseline)"
+}
+],
+metrics_to_collect: [
+Response Time (p50, p95, p99),
+Throughput (successful requests/sec),
+Error Rate (%),
+Connection Wait Time (from PgBouncer logs),
+Database CPU Usage (%),
+Active Connections Count,
+Query Execution Time (from pg_stat_statements)
+]
+}
+]

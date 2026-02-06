@@ -79,10 +79,10 @@ function getDateRange(startDate, endDate, durationHours) {
 async function modeSet(options) {
    console.log("📦 Mode: SET - สร้าง Flash Sale ใหม่\n");
 
-   // ดึง products ที่สามารถใส่ flash sale ได้
    const eligibleProducts = await prisma.product.findMany({
       where: { id: { gte: MIN_PRODUCT_ID } },
-      select: { id: true }
+      select: { id: true },
+      orderBy: { id: "asc" } // เรียงลำดับเพื่อเลือกตัวแรกๆ
    });
    console.log(`   Eligible products (id >= ${MIN_PRODUCT_ID}): ${eligibleProducts.length.toLocaleString()}`);
 
@@ -91,9 +91,9 @@ async function modeSet(options) {
       return;
    }
 
-   // สุ่มเลือก products
-   const productIds = randomSampleFromArray(eligibleProducts.map(p => p.id), options.count);
-   console.log(`   Selected: ${productIds.length.toLocaleString()} products`);
+   // เลือก products ตัวแรกๆ ตามลำดับ (ไม่สุ่ม)
+   const productIds = eligibleProducts.map(p => p.id).slice(0, options.count);
+   console.log(`   Selected: ${productIds.length.toLocaleString()} products (id ${productIds[0]} - ${productIds[productIds.length - 1]})`);
 
    // กำหนดวันที่
    const { start, end } = getDateRange(options.startDate, options.endDate, options.duration);
@@ -156,7 +156,8 @@ async function modeRestart(options) {
       // ดึง products ที่สามารถใช้ได้
       const eligibleProducts = await prisma.product.findMany({
          where: { id: { gte: MIN_PRODUCT_ID } },
-         select: { id: true }
+         select: { id: true },
+         orderBy: { id: "asc" }
       });
 
       // นับ flash sale เดิม
@@ -165,8 +166,8 @@ async function modeRestart(options) {
       });
       const count = existingCount > 0 ? existingCount : options.count;
 
-      // สุ่มเลือก products
-      const productIds = randomSampleFromArray(eligibleProducts.map(p => p.id), count);
+      // เลือก products ตัวแรกๆ ตามลำดับ
+      const productIds = eligibleProducts.map(p => p.id).slice(0, count);
 
       // ลบเก่า → สร้างใหม่
       await prisma.discount.deleteMany({
