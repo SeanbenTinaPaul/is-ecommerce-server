@@ -1020,72 +1020,128 @@ exports.displayProdByUser = async (req, res) => {
 /* search 3 วิธี
 1. ตามที่พิมพ์ลงช่อง input
 2. ตามติ๊ก ✔ ช่อง category
-3. ตามราคา */
+3. ตามราคา 
+
+[EXPERIMENT NOTE]
+ใช้ raw SQL ($queryRaw) แทน Prisma ORM เพื่อให้การเปรียบเทียบ performance 
+ระหว่าง Baseline, Static, Dynamic เป็น fair comparison
+- ขจัด confounding variable: Prisma ORM overhead vs raw SQL
+- รองรับ GIN trigram index สำหรับ Dynamic group
+*/
 //req.body === {category: [7,1], query: 'tes', price: [0, 100]}
 exports.searchFilters = async (req, res) => {
    try {
       const { query, category, price, brand } = req.body;
 
-      /*1. สร้าง obj เก็บค่าล่วงหน้า สำหรับส่งไป query DB โดย
-      ตั้งชื่อ key ให้เหมือนชื่อคอลัมน์ใน DB และ method ของ prisma
-        whereConditions =  {
-         title: { contains: "tes" },
-         categoryId: { in: [7,1] },
-         price: { gte: 0, lte: 100 }
-         }
-      */
-      const whereConditions = {};
-      //2. เก็บตาม key ใน req.body ที่ส่งมา
-      if (query.toString().trim() !== "") {
-         whereConditions.title = {
-            contains: query.toString().trim(),
-            mode: "insensitive" //to ignore case → .toLowerCase() didnt work.
-         };
+      // 1. Build WHERE conditions dynamically
+      const conditions = [];
+      const params = [];
+      let paramIndex = 1;
+
+      // Text search (case-insensitive ILIKE)
+      // ใช้ ILIKE '%...%' ซึ่งจะ benefit จาก GIN trigram index ใน Dynamic group
+      if (query && query.toString().trim() !== "") {
+         const searchTerm = `%${query.toString().trim()}%`;
+         conditions.push(`p."title" ILIKE $${paramIndex}`);
+         params.push(searchTerm);
+         paramIndex++;
       }
+
+      // Category filter
       if (category && category.length > 0) {
-         whereConditions.categoryId = {
-            in: category.map((id) => {
-               const intId = parseInt(id);
-               if (isNaN(intId)) {
-                  throw new Error(`Invalid category id: ${id}`); //=== return console.log(err) in json
-               } else {
-                  return intId;
-               }
-            })
-         };
+         const categoryIds = category.map((id) => {
+            const intId = parseInt(id);
+            if (isNaN(intId)) throw new Error(`Invalid category id: ${id}`);
+            return intId;
+         });
+         conditions.push(`p."categoryId" = ANY($${paramIndex}::int[])`);
+         params.push(categoryIds);
+         paramIndex++;
       }
+
+      // Price range filter
       if (price && price.length === 2) {
-         whereConditions.price = {
-            gte: parseFloat(price[0]),
-            lte: parseFloat(price[1])
-         };
+         const minPrice = parseFloat(price[0]);
+         const maxPrice = parseFloat(price[1]);
+         conditions.push(`p."price" >= $${paramIndex} AND p."price" <= $${paramIndex + 1}`);
+         params.push(minPrice, maxPrice);
+         paramIndex += 2;
       }
+
+      // Brand filter
       if (brand && brand.length > 0) {
-         whereConditions.brandId = {
-            in: brand.map((id) => {
-               const intId = parseInt(id);
-               if (isNaN(intId)) {
-                  throw new Error(`Invalid brand id: ${id}`); //=== return console.log(err) in json
-               } else {
-                  return intId;
-               }
-            })
-         };
+         const brandIds = brand.map((id) => {
+            const intId = parseInt(id);
+            if (isNaN(intId)) throw new Error(`Invalid brand id: ${id}`);
+            return intId;
+         });
+         conditions.push(`p."brandId" = ANY($${paramIndex}::int[])`);
+         params.push(brandIds);
+         paramIndex++;
       }
 
-      const products = await prisma.product.findMany({
-         where: whereConditions,
-         include: {
-            category: true,
-            images: true,
-            discounts: true,
-            favorites: true,
-            ratings: true,
-            brand: true
-         }
-      });
+      // 2. Build SQL query with JOINs for related data
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+      
+      // ดึง products พร้อม relations ผ่าน raw SQL
+      const rawProducts = await prisma.$queryRawUnsafe(`
+         SELECT 
+            p.*,
+            -- Category as JSON
+            json_build_object(
+               'id', c.id, 'name', c.name, 'createdBy', c."createdBy", 
+               'createdAt', c."createdAt", 'updatedAt', c."updatedAt"
+            ) as category,
+            -- Brand as JSON
+            json_build_object(
+               'id', b.id, 'title', b.title, 'description', b.description,
+               'img_url', b.img_url, 'public_id', b.public_id, 'createdBy', b."createdBy",
+               'createdAt', b."createdAt", 'updatedAt', b."updatedAt"
+            ) as brand
+         FROM "Product" p
+         LEFT JOIN "Category" c ON p."categoryId" = c.id
+         LEFT JOIN "Brand" b ON p."brandId" = b.id
+         ${whereClause}
+      `, ...params);
 
-      // คำนวณ buyPriceNum และ preferDiscount สำหรับแต่ละ product
+      // 3. ดึง related data สำหรับแต่ละ product (images, discounts, favorites, ratings)
+      const productIds = rawProducts.map(p => p.id);
+      
+      // ถ้าไม่มี products ให้ return empty array
+      if (productIds.length === 0) {
+         return res.send([]);
+      }
+
+      // Fetch images
+      const images = await prisma.$queryRawUnsafe(`
+         SELECT * FROM "Image" WHERE "productId" = ANY($1::int[])
+      `, productIds);
+
+      // Fetch discounts
+      const discounts = await prisma.$queryRawUnsafe(`
+         SELECT * FROM "Discount" WHERE "productId" = ANY($1::int[])
+      `, productIds);
+
+      // Fetch favorites
+      const favorites = await prisma.$queryRawUnsafe(`
+         SELECT * FROM "Favorite" WHERE "productId" = ANY($1::int[])
+      `, productIds);
+
+      // Fetch ratings
+      const ratings = await prisma.$queryRawUnsafe(`
+         SELECT * FROM "Rating" WHERE "productId" = ANY($1::int[])
+      `, productIds);
+
+      // 4. Map related data to products
+      const products = rawProducts.map(product => ({
+         ...product,
+         images: images.filter(img => img.productId === product.id),
+         discounts: discounts.filter(d => d.productId === product.id),
+         favorites: favorites.filter(f => f.productId === product.id),
+         ratings: ratings.filter(r => r.productId === product.id)
+      }));
+
+      // 5. คำนวณ buyPriceNum และ preferDiscount สำหรับแต่ละ product
       const productsWithDiscount = [];
       for (const product of products) {
          const { buyPriceNum, preferDiscount } = calculateProductDiscount(product);

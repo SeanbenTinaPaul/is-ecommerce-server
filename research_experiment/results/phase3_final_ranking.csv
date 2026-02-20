@@ -1,0 +1,16 @@
+Rank,ID,Table,Tag,Imp_Pct,Freq,Penalty,Score
+1,FK01_ImageProductId,Image,Base_Standard,97.84,15,1.0,1467.6
+2,FK03_FavoriteProductId,Favorite,Base_Standard,92.83,14,1.0,1299.62
+3,P19_SearchFiltersPrice,Product,Base_Standard,96.17,14,1.2,1024.23
+4,P16_DisplayProdByUserCategory,Product,Base_Standard,58.2,12,1.2,531.29
+5,FK04_RatingProductId,Rating,Base_Standard,39.28,12,1.0,471.36
+6,P20_SearchFiltersBrand,Product,Base_Standard,40.38,14,1.2,430.05
+7,U12_GetOrderPaginated,Order,Dynamic_FlashSale,95.23,15,2.5,361.37
+8,P18_SearchFiltersCategory,Product,Base_Standard,32.93,14,1.2,350.71
+9,FK07_OrderOrderedById,Order,Dynamic_FlashSale,80.68,15,2.5,306.16
+10,U11_GetOrder,Order,Dynamic_FlashSale,80.49,15,2.5,305.44
+11,U13_AddProdRatingGroupBy,Rating,Base_Standard,30.5,10,1.0,305.0
+12,FK06_ProductOnOrderOrderId,ProductOnOrder,Dynamic_FlashSale,99.73,12,2.5,302.76
+13,P15_DisplayProdByUser_Orders,Order,Dynamic_FlashSale,83.31,12,2.5,252.91
+14,P13_ProductOnOrderByProductId,ProductOnOrder,Dynamic_FlashSale,52.46,15,2.5,199.07
+15,U15_FavoriteLimitCheck,Favorite,Base_Standard,7.43,16,1.0,118.88
