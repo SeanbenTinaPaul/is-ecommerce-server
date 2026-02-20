@@ -25,4 +25,4 @@ dist-ssr
 .env
 server/util/tempCode.js
 
-server/research_experiment/theory_conceptual/*
+server/research_experiment/theory_conceptual
