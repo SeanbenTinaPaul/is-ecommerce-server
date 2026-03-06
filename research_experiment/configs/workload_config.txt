@@ -15,13 +15,15 @@ behavior_note: "เน้นการดูข้อมูล สินค้า
 expected_cart_behavior: "Browse 3-5 items, ซื้อ 1-3 items - มีเวลาคิด",
 
 connection_pool: {
-size: 20,
-vu_to_pool_ratio: "1:1",
+size: "50-100 (TBD after Neon signup)",
+previous_size: 20,
+vu_to_pool_ratio_with_50: "1:2.5 (20 VUs : 50 connections → pool มีเหลือเฟือ)",
+vu_to_pool_ratio_with_100: "1:5 (20 VUs : 100 connections → even more headroom)",
 constraint_level: "None",
-rationale: "Neon Free Tier constraint - fixed pool size across all phases",
+rationale: "Pool มากกว่า VUs → ไม่มี queuing",
 expected_wait_time: "~0ms",
 expected_queue_length: "0",
-expected_utilization: "~100% (20/20 connections used)",
+expected_utilization: "~40% (20/50) or ~20% (20/100)",
 expected_impact: "No bottleneck - baseline performance measurement"
 },
 
@@ -41,7 +43,7 @@ alert_threshold: ">5"
 connection_utilization_percent: {
 description: "% ของ pool ที่ถูกใช้งาน",
 source: "PgBouncer SHOW POOLS (cl_active / maxwait)",
-expected_value: "~100%",
+expected_value: "~40-50%",
 alert_threshold: "N/A"
 },
 timeout_errors_count: {
@@ -68,10 +70,13 @@ cart_size_interpretation: "Browse มาก (avg 3-5 items), ซื้อน้�
 },
 
 expected_performance: {
-estimated_rps: "3-5 requests/sec",
-estimated_response_time_p95: "<100ms",
+estimated_rps: "5-10 requests/sec",
+previous_rps: "3-5 requests/sec",
+estimated_response_time_p95: "<50ms",
+previous_response_time_p95: "<100ms",
 estimated_error_rate: "<0.1%",
-primary_bottleneck: "None - baseline measurement"
+primary_bottleneck: "None - baseline measurement",
+change_note: "RPS สูงขึ้นเล็กน้อย, response time ลดลง เพราะ dedicated CPU + parallel workers"
 }
 },
 
@@ -90,45 +95,52 @@ behavior_note: "พฤติกรรมการซื้อขายปกต�
 expected_cart_behavior: "Browse 2-4 items, ซื้อ 1-3 items - พฤติกรรมปกติ",
 
 connection_pool: {
-size: 20,
-vu_to_pool_ratio: "5:1",
-constraint_level: "Moderate",
-rationale: "5 VUs competing for 1 connection - moderate queuing begins",
-expected_wait_time: "<100ms",
-expected_queue_length: "0-5",
-expected_utilization: "100% (saturated)",
-expected_impact: "Moderate queuing - connection pool becomes visible bottleneck"
+size: "50-100 (TBD after Neon signup)",
+previous_size: 20,
+vu_to_pool_ratio_with_50: "2:1 (100 VUs : 50 connections → moderate queuing)",
+vu_to_pool_ratio_with_100: "1:1 (100 VUs : 100 connections → no queuing)",
+constraint_level: "Low to Moderate (depends on pool size)",
+rationale: "Pool ใหญ่ขึ้น → queuing ลดลงมาก → เห็นผล Index ชัดขึ้น",
+expected_wait_time: "<20ms (was <100ms)",
+expected_queue_length: "0-2 (was 0-5)",
+expected_utilization: "~100% with 50, ~50-60% with 100",
+expected_impact: "Minimal bottleneck - Index performance becomes visible"
 },
 
 metrics_to_collect: {
 connection_wait_time_ms: {
 description: "เวลารอ connection ว่าง (milliseconds)",
 source: "PgBouncer logs or k6 custom metric",
-expected_value: "20-80ms",
-alert_threshold: ">150ms"
+expected_value: "<20ms",
+previous_expected_value: "20-80ms",
+alert_threshold: ">100ms"
 },
 connection_queue_length: {
 description: "จำนวน request ที่รอ connection",
 source: "PgBouncer SHOW POOLS (cl_waiting)",
-expected_value: "2-5",
+expected_value: "0-2",
+previous_expected_value: "2-5",
 alert_threshold: ">10"
 },
 connection_utilization_percent: {
 description: "% ของ pool ที่ถูกใช้งาน",
 source: "PgBouncer SHOW POOLS (cl_active / maxwait)",
-expected_value: "100% (saturated)",
+expected_value: "60-100%",
+previous_expected_value: "100% (saturated)",
 alert_threshold: "N/A"
 },
 timeout_errors_count: {
 description: "จำนวน connection timeout errors",
 source: "k6 error counter",
-expected_value: "0-2 (occasional)",
-alert_threshold: ">5"
+expected_value: "0",
+previous_expected_value: "0-2 (occasional)",
+alert_threshold: ">2"
 },
 active_connections: {
 description: "จำนวน connection ที่ active ขณะนั้น",
 source: "PgBouncer SHOW POOLS (cl_active)",
-expected_value: "20 (fully utilized)",
+expected_value: "30-50",
+previous_expected_value: "20 (fully utilized)",
 alert_threshold: "N/A"
 }
 },
@@ -143,10 +155,15 @@ cart_size_interpretation: "Browse ปานกลาง (avg 2-4 items), ซื�
 },
 
 expected_performance: {
-estimated_rps: "15-20 requests/sec",
-estimated_response_time_p95: "150-300ms",
-estimated_error_rate: "<1%",
-primary_bottleneck: "Connection pool saturation - queuing begins"
+estimated_rps: "25-40 requests/sec",
+previous_rps: "15-20 requests/sec",
+estimated_response_time_p95: "50-150ms",
+previous_response_time_p95: "150-300ms",
+estimated_error_rate: "<0.5%",
+previous_error_rate: "<1%",
+primary_bottleneck: "Query/Index performance (ไม่ใช่ connection pool อีกแล้ว)",
+previous_bottleneck: "Connection pool saturation - queuing begins",
+change_note: "Bottleneck เปลี่ยนจาก Pool → Index performance → เห็นผลวิจัยชัดขึ้น"
 }
 },
 
@@ -165,28 +182,33 @@ behavior_note: "พฤติกรรมการซื้อขายสูง 
 expected_cart_behavior: "Browse 1-3 items, ซื้อ 1-3 items - รู้ใจแล้ว",
 
 connection_pool: {
-size: 20,
-vu_to_pool_ratio: "15:1",
-constraint_level: "High",
-rationale: "15 VUs competing for 1 connection - significant queuing",
-expected_wait_time: "200-500ms",
-expected_queue_length: "5-15",
+size: "50-100 (TBD after Neon signup)",
+previous_size: 20,
+vu_to_pool_ratio_with_50: "6:1 (300 VUs : 50 connections → moderate-high queuing)",
+vu_to_pool_ratio_with_100: "3:1 (300 VUs : 100 connections → low queuing)",
+constraint_level: "Moderate",
+previous_constraint_level: "High",
+rationale: "Pool ใหญ่ขึ้น → queuing ลดลงอย่างมาก เทียบกับเดิม (15:1 → 6:1 or 3:1)",
+expected_wait_time: "50-150ms (was 200-500ms)",
+expected_queue_length: "2-8 (was 5-15)",
 expected_utilization: "100% (saturated)",
-expected_impact: "Significant queuing - connection pool is PRIMARY bottleneck"
+expected_impact: "Moderate queuing - both Pool and Index performance visible"
 },
 
 metrics_to_collect: {
 connection_wait_time_ms: {
 description: "เวลารอ connection ว่าง (milliseconds)",
 source: "PgBouncer logs or k6 custom metric",
-expected_value: "200-500ms",
-alert_threshold: ">800ms"
+expected_value: "50-150ms",
+previous_expected_value: "200-500ms",
+alert_threshold: ">500ms"
 },
 connection_queue_length: {
 description: "จำนวน request ที่รอ connection",
 source: "PgBouncer SHOW POOLS (cl_waiting)",
-expected_value: "8-15",
-alert_threshold: ">20"
+expected_value: "2-8",
+previous_expected_value: "8-15",
+alert_threshold: ">15"
 },
 connection_utilization_percent: {
 description: "% ของ pool ที่ถูกใช้งาน",
@@ -197,13 +219,15 @@ alert_threshold: "N/A"
 timeout_errors_count: {
 description: "จำนวน connection timeout errors",
 source: "k6 error counter",
-expected_value: "5-15 (noticeable)",
-alert_threshold: ">25"
+expected_value: "0-3",
+previous_expected_value: "5-15 (noticeable)",
+alert_threshold: ">10"
 },
 active_connections: {
 description: "จำนวน connection ที่ active ขณะนั้น",
 source: "PgBouncer SHOW POOLS (cl_active)",
-expected_value: "20 (fully utilized)",
+expected_value: "50-100 (fully utilized)",
+previous_expected_value: "20 (fully utilized)",
 alert_threshold: "N/A"
 }
 },
@@ -218,10 +242,15 @@ cart_size_interpretation: "Browse น้อยลง (avg 1-3 items), ซื้�
 },
 
 expected_performance: {
-estimated_rps: "45-60 requests/sec",
-estimated_response_time_p95: "500-1000ms",
-estimated_error_rate: "1-3%",
-primary_bottleneck: "Connection pool saturation - dominant performance limiter"
+estimated_rps: "80-150 requests/sec",
+previous_rps: "45-60 requests/sec",
+estimated_response_time_p95: "150-500ms",
+previous_response_time_p95: "500-1000ms",
+estimated_error_rate: "<1%",
+previous_error_rate: "1-3%",
+primary_bottleneck: "Mixed: Query/Index + Connection Pool",
+previous_bottleneck: "Connection pool saturation - dominant performance limiter",
+change_note: "Response time ลดลงครึ่งหนึ่ง, error rate ลดมาก, bottleneck เปลี่ยนเป็น mixed"
 }
 },
 
@@ -240,28 +269,33 @@ behavior_note: "เน้นการทำธุรกรรมและจ่�
 expected_cart_behavior: "Browse minimal (แค่ flash item), ซื้อ 2-4 items - panic buying พฤติกรรม realistic, ใช้ Bot กดซื้อ",
 
 connection_pool: {
-size: 20,
-vu_to_pool_ratio: "50:1",
-constraint_level: "Severe",
-rationale: "50 VUs competing for 1 connection - extreme connection starvation",
-expected_wait_time: ">1000ms",
-expected_queue_length: ">20",
+size: "50-100 (TBD after Neon signup)",
+previous_size: 20,
+vu_to_pool_ratio_with_50: "20:1 (1000 VUs : 50 connections → significant queuing)",
+vu_to_pool_ratio_with_100: "10:1 (1000 VUs : 100 connections → moderate-high queuing)",
+constraint_level: "High",
+previous_constraint_level: "Severe",
+rationale: "ดีขึ้นมากจากเดิม (50:1 → 20:1 or 10:1) แต่ยังมี queuing → วัดผลได้ทั้ง Pool + Index",
+expected_wait_time: "200-800ms (was >1000ms)",
+expected_queue_length: "5-20 (was >20)",
 expected_utilization: "100% (saturated)",
-expected_impact: "SEVERE queuing - connection pool creates artificial system bottleneck. This is the research focus: measuring system behavior under extreme resource constraint."
+expected_impact: "Significant queuing but NOT as extreme as free tier → see Index impact clearer"
 },
 
 metrics_to_collect: {
 connection_wait_time_ms: {
 description: "เวลารอ connection ว่าง (milliseconds)",
 source: "PgBouncer logs or k6 custom metric",
-expected_value: ">1000ms (1+ seconds)",
-alert_threshold: ">3000ms"
+expected_value: "200-800ms",
+previous_expected_value: ">1000ms (1+ seconds)",
+alert_threshold: ">2000ms"
 },
 connection_queue_length: {
 description: "จำนวน request ที่รอ connection",
 source: "PgBouncer SHOW POOLS (cl_waiting)",
-expected_value: ">20 (severe backlog)",
-alert_threshold: ">50"
+expected_value: "5-20",
+previous_expected_value: ">20 (severe backlog)",
+alert_threshold: ">30"
 },
 connection_utilization_percent: {
 description: "% ของ pool ที่ถูกใช้งาน",
@@ -272,13 +306,15 @@ alert_threshold: "N/A"
 timeout_errors_count: {
 description: "จำนวน connection timeout errors",
 source: "k6 error counter",
-expected_value: ">50 (significant failures)",
-alert_threshold: ">100"
+expected_value: "5-20",
+previous_expected_value: ">50 (significant failures)",
+alert_threshold: ">40"
 },
 active_connections: {
 description: "จำนวน connection ที่ active ขณะนั้น",
 source: "PgBouncer SHOW POOLS (cl_active)",
-expected_value: "20 (fully utilized)",
+expected_value: "50-100 (fully utilized)",
+previous_expected_value: "20 (fully utilized)",
 alert_threshold: "N/A"
 }
 },
@@ -293,10 +329,15 @@ cart_size_interpretation: "Browse minimal (avg 1 item - แค่ flash item), �
 },
 
 expected_performance: {
-estimated_rps: "150-200 requests/sec (attempted)",
-estimated_response_time_p95: ">2000ms",
-estimated_error_rate: "5-15% (connection timeouts)",
-primary_bottleneck: "Connection pool starvation - EXTREME bottleneck dominates all performance metrics"
+estimated_rps: "300-500 requests/sec (attempted)",
+previous_rps: "150-200 requests/sec (attempted)",
+estimated_response_time_p95: "500-1500ms",
+previous_response_time_p95: ">2000ms",
+estimated_error_rate: "2-5%",
+previous_error_rate: "5-15% (connection timeouts)",
+primary_bottleneck: "Mixed: Query/Index + Connection Pool + Write contention",
+previous_bottleneck: "Connection pool starvation - EXTREME bottleneck dominates all performance metrics",
+change_note: "Error rate ลดมาก, response time ลดลงครึ่ง → สามารถวัดผล Index ได้จริง (ไม่ถูก pool dominate)"
 }
 }
 ]

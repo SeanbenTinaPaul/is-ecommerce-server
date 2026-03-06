@@ -1,12 +1,13 @@
 /**
- * Seed Script: สร้าง 10,000 User records สำหรับ k6 Load Testing
+ * Seed Script: สร้าง User records สำหรับ k6 Load Testing
  * ใช้ @faker-js/faker สำหรับ generate ข้อมูล
  * ใช้ pre-hashed password เดียวกันทุก user สำหรับ k6 testing
  *
  * Usage:
- *   node prisma/seed-users.js              # seed 10,000 users
- *   node prisma/seed-users.js --count=10   # seed 10 users (for testing)
- *   node prisma/seed-users.js --count=1000 # seed 1,000 users
+ *   node prisma/seed-users.js                  # seed 200,000 users (default)
+ *   node prisma/seed-users.js --count=10       # seed 10 users (for testing)
+ *   node prisma/seed-users.js --count=1000     # seed 1,000 users
+ *   node prisma/seed-users.js --favorites=5    # seed พร้อม 5 favorites ต่อ user
  *
  * Login credentials for k6:
  *   - Email: ใช้ email ที่ seed (ดูใน database)
@@ -18,13 +19,15 @@ const bcrypt = require("bcryptjs");
 const prisma = require("../config/prisma");
 
 // ===== Configuration =====
-const DEFAULT_COUNT = 10000;
+const DEFAULT_COUNT = 200000; // 200K users (ตาม config ใหม่)
 const BATCH_SIZE = 500; // จำนวน records ต่อ batch
 const LOG_INTERVAL = 1000; // log progress ทุกกี่ records
-const FAVORITES_PER_USER = 2; // จำนวน favorites ต่อ user
 
 // Password ที่ใช้สำหรับทุก test user (สำหรับ k6 login)
 const TEST_PASSWORD = "Test@1234";
+
+// Global counter สำหรับทำให้ email unique
+let emailCounter = 0;
 
 // ===== Helper Functions =====
 
@@ -34,6 +37,7 @@ const TEST_PASSWORD = "Test@1234";
 function parseArgs() {
    const args = process.argv.slice(2);
    let count = DEFAULT_COUNT;
+   let favorites = 0; // default: ไม่สร้าง favorites (ไม่จำเป็นสำหรับงานวิจัย)
 
    for (const arg of args) {
       if (arg.startsWith("--count=")) {
@@ -42,10 +46,16 @@ function parseArgs() {
             console.error("Invalid count value. Using default:", DEFAULT_COUNT);
             count = DEFAULT_COUNT;
          }
+      } else if (arg.startsWith("--favorites=")) {
+         favorites = parseInt(arg.split("=")[1], 10);
+         if (isNaN(favorites) || favorites < 0) {
+            console.error("Invalid favorites value. Using default: 0");
+            favorites = 0;
+         }
       }
    }
 
-   return { count };
+   return { count, favorites };
 }
 
 /**
@@ -73,10 +83,13 @@ function randomSampleFromArray(arr, n) {
 
 /**
  * Generate user data object
+ * ใช้ counter + timestamp เพื่อให้ email unique ทุกตัว (ป้องกัน faker email collision ที่ 200K+)
  */
 function generateUserData(hashedPassword) {
+   emailCounter++;
+   const uniqueEmail = `user${emailCounter}_${faker.string.alphanumeric(4)}@test.com`;
    return {
-      email: faker.internet.email().toLowerCase(),
+      email: uniqueEmail,
       password: hashedPassword,
       name: faker.person.fullName(),
       role: "user",
@@ -88,7 +101,7 @@ function generateUserData(hashedPassword) {
 // ===== Main Seed Functions =====
 
 /**
- * ดึง Product IDs ทั้งหมดจาก database
+ * ดึง Product IDs ทั้งหมดจาก database (ยกเว้น banner id=46)
  */
 async function getProductIds() {
    const products = await prisma.product.findMany({
@@ -101,23 +114,26 @@ async function getProductIds() {
 /**
  * Seed users in batches
  */
-async function seedUsers(totalCount) {
+async function seedUsers(totalCount, favoritesPerUser) {
    console.log(`\n👥 Starting to seed ${totalCount.toLocaleString()} users...`);
    console.log(`   Batch size: ${BATCH_SIZE}`);
-   console.log(`   Favorites per user: ${FAVORITES_PER_USER}`);
+   console.log(`   Favorites per user: ${favoritesPerUser}`);
    console.log(`   Estimated batches: ${Math.ceil(totalCount / BATCH_SIZE)}\n`);
 
-   // Pre-hash password ครั้งเดียว (Option A - เร็วกว่ามาก)
+   // Pre-hash password ครั้งเดียว (เร็วกว่ามาก)
    console.log("   🔐 Pre-hashing password...");
    const hashedPassword = await bcrypt.hash(TEST_PASSWORD, 10);
    console.log(`   ✓ Password hash ready (use "${TEST_PASSWORD}" for k6 login)\n`);
 
-   // ดึง product IDs สำหรับ random favorites
-   const productIds = await getProductIds();
-   if (productIds.length < FAVORITES_PER_USER) {
-      console.warn(`⚠️ Warning: Only ${productIds.length} products available for favorites`);
+   // ดึง product IDs สำหรับ favorites (ถ้าต้องการ)
+   let productIds = [];
+   if (favoritesPerUser > 0) {
+      productIds = await getProductIds();
+      if (productIds.length < favoritesPerUser) {
+         console.warn(`⚠️ Warning: Only ${productIds.length} products available for favorites`);
+      }
+      console.log(`   Using ${productIds.length} products for favorites\n`);
    }
-   console.log(`   Using ${productIds.length} products for favorites\n`);
 
    const startTime = Date.now();
    let totalUsersCreated = 0;
@@ -156,12 +172,11 @@ async function seedUsers(totalCount) {
 
          totalUsersCreated += createdUsers.length;
 
-         // Generate favorites สำหรับแต่ละ user
-         if (productIds.length >= FAVORITES_PER_USER) {
+         // Generate favorites สำหรับแต่ละ user (ถ้า --favorites flag ถูกกำหนด)
+         if (favoritesPerUser > 0 && productIds.length >= favoritesPerUser) {
             const favoriteDataBatch = [];
             for (const user of createdUsers) {
-               // สุ่ม 2 products ที่ไม่ซ้ำกัน
-               const randomProductIds = randomSampleFromArray(productIds, FAVORITES_PER_USER);
+               const randomProductIds = randomSampleFromArray(productIds, favoritesPerUser);
                for (const productId of randomProductIds) {
                   favoriteDataBatch.push({
                      userId: user.id,
@@ -173,7 +188,7 @@ async function seedUsers(totalCount) {
             // Insert favorites batch
             const favResult = await prisma.favorite.createMany({
                data: favoriteDataBatch,
-               skipDuplicates: true // skip ถ้า user-product pair ซ้ำ
+               skipDuplicates: true
             });
             totalFavoritesCreated += favResult.count;
          }
@@ -196,7 +211,9 @@ async function seedUsers(totalCount) {
    const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
    console.log(`\n✅ Seeding completed!`);
    console.log(`   Total users created: ${totalUsersCreated.toLocaleString()}`);
-   console.log(`   Total favorites created: ${totalFavoritesCreated.toLocaleString()}`);
+   if (totalFavoritesCreated > 0) {
+      console.log(`   Total favorites created: ${totalFavoritesCreated.toLocaleString()}`);
+   }
    console.log(`   Total time: ${totalTime} seconds`);
    console.log(`   Average rate: ${(totalUsersCreated / totalTime).toFixed(0)} users/sec`);
 
@@ -208,12 +225,13 @@ async function main() {
    console.log("🌱 User Seed Script Started\n");
    console.log("=".repeat(50));
 
-   const { count } = parseArgs();
+   const { count, favorites } = parseArgs();
    console.log(`   Target: ${count.toLocaleString()} users`);
+   console.log(`   Favorites per user: ${favorites}`);
    console.log(`   Password: ${TEST_PASSWORD} (for k6 login)\n`);
 
    try {
-      await seedUsers(count);
+      await seedUsers(count, favorites);
 
       console.log("\n" + "=".repeat(50));
       console.log("🎉 All done!");

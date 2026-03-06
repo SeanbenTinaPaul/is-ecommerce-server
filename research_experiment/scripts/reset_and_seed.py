@@ -8,7 +8,7 @@ Reset and Re-Seed Script for K6 Experiment Replications
 - Each replication ของ k6 workload experiment
 
 Usage (run from server/ directory):
-  python research_experiment/scripts/reset_and_seed.py -y           # TRUNCATE all, re-seed 50K orders
+  python research_experiment/scripts/reset_and_seed.py -y           # TRUNCATE all, re-seed 500K orders
   python research_experiment/scripts/reset_and_seed.py -t 30000 -y  # Custom target 30K orders
   python research_experiment/scripts/reset_and_seed.py --no-truncate -y  # Delete legacy only (orderId < 67)
 
@@ -55,17 +55,21 @@ except ImportError:
 # =============================================================================
 # Configuration
 # =============================================================================
-TARGET_ORDERS = 50000
-TARGET_ITEMS_MULTIPLIER = 3  # avg ~3 items per order = 150,000 items
+TARGET_ORDERS = 500000
+TARGET_ITEMS_MULTIPLIER = 5  # avg ~5 items per order = ~2,500,000 items
 BATCH_SIZE = 1000
 
 # Exclude legacy dev data
 MIN_USER_ID = 13
 MIN_PRODUCT_ID = 55
 
-# Poisson-like distribution for cart size (λ = 3)
-ITEMS_PER_ORDER_MIN = 1
-ITEMS_PER_ORDER_MAX = 5
+# Items per order range (avg 5 → 500K × 5 = ~2.5M ProductOnOrder)
+ITEMS_PER_ORDER_MIN = 3
+ITEMS_PER_ORDER_MAX = 7
+
+# Fixed random seed → deterministic re-seed ทุกครั้ง
+RANDOM_SEED = 42
+random.seed(RANDOM_SEED)
 
 
 # =============================================================================
@@ -106,6 +110,7 @@ def get_counts(conn):
 def truncate_tables(conn):
     """TRUNCATE Order และ ProductOnOrder tables"""
     print("\n🗑️  Truncating tables...")
+    conn.rollback()  # ปิด transaction ที่ค้างจาก get_counts()
     conn.autocommit = True
     with conn.cursor() as cur:
         # ProductOnOrder ก่อน (FK constraint)
@@ -138,12 +143,12 @@ def delete_legacy_only(conn):
 # Seeding Functions
 # =============================================================================
 def fetch_experiment_ids(conn):
-    """ดึง User IDs >= 13 และ Product IDs >= 55 สำหรับ experiment"""
+    """ดึง User IDs >= 13 และ Product IDs >= 55 ทั้งหมด (ยกเว้น banner id=46)"""
     with conn.cursor() as cur:
-        cur.execute(f'SELECT id FROM "User" WHERE id >= {MIN_USER_ID} LIMIT 1000')
+        cur.execute(f'SELECT id FROM "User" WHERE id >= {MIN_USER_ID}')
         user_ids = [row[0] for row in cur.fetchall()]
         
-        cur.execute(f'SELECT id FROM "Product" WHERE id >= {MIN_PRODUCT_ID} LIMIT 1000')
+        cur.execute(f'SELECT id FROM "Product" WHERE id >= {MIN_PRODUCT_ID} AND id != 46')
         product_ids = [row[0] for row in cur.fetchall()]
     
     if not user_ids:
@@ -154,7 +159,7 @@ def fetch_experiment_ids(conn):
         sys.exit(1)
     
     print(f"   Cached {len(user_ids)} users (id >= {MIN_USER_ID})")
-    print(f"   Cached {len(product_ids)} products (id >= {MIN_PRODUCT_ID})")
+    print(f"   Cached {len(product_ids)} products (id >= {MIN_PRODUCT_ID}, exclude banner)")
     return user_ids, product_ids
 
 

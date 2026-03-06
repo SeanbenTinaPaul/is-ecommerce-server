@@ -8,7 +8,7 @@ Usage (run from server/ directory):
   python research_experiment/scripts/seed_scale_up.py
 
 Note:
-- Script นี้จะ ADD orders จนกว่าจะถึง TARGET (50,000)
+- Script นี้จะ ADD orders จนกว่าจะถึง TARGET (500,000)
 - ถ้าต้องการ RESET ก่อน seed ใหม่ ให้ใช้ reset_and_seed.py แทน
 
 Safety:
@@ -47,10 +47,15 @@ except ImportError:
 
 
 # Configuration
-TARGET_ORDERS = 50000
+TARGET_ORDERS = 500000
 BATCH_SIZE = 1000
-ITEMS_PER_ORDER_MIN = 1
-ITEMS_PER_ORDER_MAX = 5
+ITEMS_PER_ORDER_MIN = 3
+ITEMS_PER_ORDER_MAX = 7  # avg 5 items/order → 500K × 5 = ~2,500,000 ProductOnOrder
+
+# Fixed random seed → ทำให้ seed ได้ผลเหมือนกันทุกครั้ง (deterministic)
+# เพื่อให้จำนวน ProductOnOrder คงที่ทุก experiment
+RANDOM_SEED = 42
+random.seed(RANDOM_SEED)
 
 
 def clean_database_url(url):
@@ -86,13 +91,14 @@ def generate_random_timestamp(days_back=90):
     return now - timedelta(days=random_days, seconds=random_seconds)
 
 
-def fetch_cached_ids(conn, limit=1000):
-    """ดึง User IDs และ Product IDs มาเก็บ cache"""
+def fetch_cached_ids(conn):
+    """ดึง User IDs และ Product IDs ทั้งหมดมาเก็บ cache (ยกเว้น banner id=46)"""
     with conn.cursor() as cur:
-        cur.execute(f'SELECT id FROM "User" LIMIT {limit}')
+        cur.execute('SELECT id FROM "User"')
         user_ids = [row[0] for row in cur.fetchall()]
         
-        cur.execute(f'SELECT id FROM "Product" LIMIT {limit}')
+        # ยกเว้น productId = 46 (banner)
+        cur.execute('SELECT id FROM "Product" WHERE id != 46')
         product_ids = [row[0] for row in cur.fetchall()]
     
     if not user_ids or not product_ids:

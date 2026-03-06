@@ -1,10 +1,10 @@
 /**
- * Seed Script: สร้าง 100,000 Product records สำหรับ Indexing Research
+ * Seed Script: สร้าง 20,000 Product records สำหรับ Indexing Research
  * ใช้ @faker-js/faker สำหรับ generate ข้อมูล
  * ใช้ placeholder URLs จาก picsum.photos สำหรับรูปภาพ
  * 
  * Usage:
- *   node prisma/seed-products.js              # seed 100,000 products
+ *   node prisma/seed-products.js              # seed 20,000 products
  *   node prisma/seed-products.js --count=10   # seed 10 products (for testing)
  *   node prisma/seed-products.js --count=1000 # seed 1,000 products
  */
@@ -13,7 +13,7 @@ const { faker } = require("@faker-js/faker");
 const prisma = require("../config/prisma");
 
 // ===== Configuration =====
-const DEFAULT_COUNT = 100000;
+const DEFAULT_COUNT = 20000;
 const BATCH_SIZE = 500; // จำนวน records ต่อ batch เพื่อหลีกเลี่ยง connection timeout
 const LOG_INTERVAL = 1000; // log progress ทุกกี่ records
 

@@ -2,58 +2,63 @@
 [
 {
 category: "Dataset Sizing",
-constraint: "Neon Free Tier: พื้นที่ว่างเหลือ > 400 MB (ปลอดภัยสำหรับ Run Test)",
-total_storage_limit: "500 MB",
+constraint: "Neon Launch Plan: พื้นที่ 10 GB (เดิม 500 MB)",
+total_storage_limit: "10 GB",
+migration_note: "ขยายจาก Free Tier 500MB → Launch Plan 10GB เพื่อให้ข้อมูลใหญ่กว่า RAM → เห็นผล I/O Disk ชัดเจน",
 parameters: [
 {
 parameter_name: "Users Count",
 table_name: "User",
-recommended_value: "10,000 rows",
-ideal_value_unlimited: "200,000 rows",
-rationale: "เหมาะสมกับ Neon Free Tier (500MB), realistic cardinality สำหรับ e-commerce",
-estimated_size: "~15 MB",
+recommended_value: "200,000 rows",
+previous_value: "10,000 rows",
+rationale: "ขยายจากเดิม 10K → 200K เพื่อ realistic cardinality, ข้อมูลใหญ่กว่า RAM ช่วยให้ Query Planner ทำงานสมจริง",
+estimated_size: "~300 MB",
 reset_strategy: "N/A (Dimension table - ไม่ต้อง reset)",
-"สถานะ script": "มีแล้ว",
-"สถานะ seed data" : "seed แล้ว"
+"สถานะ script": "มีแล้ว (seed-users.js)",
+"สถานะ seed data" : "✅ seed แล้ว ~200,000 rows"
 },
 {
 parameter_name: "Products Count",
 table_name: "Product",
-recommended_value: "10,000 rows",
-ideal_value_unlimited: "20,000 rows",
-rationale: "รองรับการกระจายตัวแบบ Zipfian ได้ดี, supports Zipfian long tail",
-estimated_size: "~20 MB",
-reset_strategy: "N/A (Dimension table - ไม่ต้อง reset)"
-"สถานะ script": "มีแล้ว",
-"สถานะ seed data" : "seed แล้ว"
+recommended_value: "20,000 rows",
+previous_value: "10,000 rows",
+rationale: "ขยายจากเดิม 10K → 20K เพื่อ Zipfian long tail ที่กว้างขึ้น",
+estimated_size: "~40 MB",
+reset_strategy: "N/A (Dimension table - ไม่ต้อง reset)",
+"สถานะ script": "มีแล้ว (seed-products.js)",
+"สถานะ seed data" : "✅ seed แล้ว ~20,000 rows"
 },
 {
 parameter_name: "Orders Count",
 table_name: "Order",
-recommended_value: "50,000 rows",
-ideal_value_unlimited: "50,000 rows",
-rationale: "Fact table ขนาดเหมาะสมสำหรับวัดผล Query Plan และ Index Performance",
-estimated_size: "~50 MB (including indexes)",
-reset_strategy: "TRUNCATE TABLE \"Order\" CASCADE",
-reset_rationale: "ป้องกัน Table Bloat และ WAL เต็ม, reset หลังแต่ละ Phase",
-"สถานะ script": "ยังไม่มี",
-"สถานะ seed data" : "ยังไม่ seed"
+recommended_value: "500,000 rows",
+previous_value: "50,000 rows",
+rationale: "ขยายจาก 50K → 500K เพื่อ Fact table ขนาดใหญ่พอที่จะเห็นความต่างระหว่าง B-Tree, GIN, No-Index",
+estimated_size: "~500 MB (including indexes)",
+baseline_actual_rows: "500,000",
+reset_strategy: "TRUNCATE TABLE \"Order\" CASCADE → re-seed ด้วย seed_scale_up.py",
+reset_rationale: "ต้อง reset ก่อนเริ่มแต่ละ experiment (Baseline/Static/Dynamic) เพื่อให้ starting data เท่ากัน",
+"สถานะ script": "✅ มีแล้ว (seed_scale_up.py)",
+"สถานะ seed data" : "✅ seed แล้ว 500,000 rows (deterministic, seed=42)"
 },
 {
 parameter_name: "Order Items Count",
 table_name: "ProductOnOrder",
-recommended_value: "150,000 rows",
-ideal_value_unlimited: "2,500,000 rows",
-rationale: "Fact table หลักสำหรับการทดสอบ Index Performance, >100K rows ถือว่าเป็น standard fact table size",
-estimated_size: "~200 MB (including indexes)",
-reset_strategy: "TRUNCATE TABLE \"ProductOnOrder\" CASCADE",
-reset_rationale: "ป้องกัน Table Bloat และ WAL เต็ม, reset หลังแต่ละ Phase",
-"สถานะ script": "ยังไม่มี",
-"สถานะ seed data" : "ยังไม่ seed"
+recommended_value: "~2,400,000 rows (จำนวนแปรผันตาม random items/order)",
+previous_value: "150,000 rows",
+baseline_actual_rows: "2,496,805",
+expected_range: "2,496,805 (fixed — deterministic ด้วย random.seed(42))",
+variance_note: "จำนวน rows คงที่ทุกครั้งที่ re-seed เนื่องจากใช้ fixed random seed=42",
+rationale: "ขยายจาก 150K → ~2.4M เพื่อ Fact table หลัก ข้อมูลขนาด 1-2 GB",
+estimated_size: "~1 GB (including indexes)",
+reset_strategy: "TRUNCATE TABLE \"ProductOnOrder\" CASCADE → re-seed ด้วย seed_scale_up.py",
+reset_rationale: "ต้อง reset ก่อนเริ่มแต่ละ experiment (Baseline/Static/Dynamic) เพื่อให้ starting data ใกล้เคียงกัน",
+"สถานะ script": "✅ มีแล้ว (seed_scale_up.py)",
+"สถานะ seed data" : "✅ seed แล้ว 2,496,805 rows (deterministic, seed=42)"
 }
 ],
-total_estimated_size: "~285 MB (ปลอดภัย < 400 MB threshold)",
-safety_margin: "215 MB available for growth and temp data"
+total_estimated_size: "~1.8 GB",
+safety_margin: "8.2 GB available for growth and temp data"
 },
 {
 category: "Workload Configuration",
@@ -64,22 +69,26 @@ phase_1_off_peak: "95:5",
 phase_2_normal: "80:20",
 phase_3_peak: "80:20",
 phase_4_flash_sale: "50:50",
-rationale: "Flash Sale (50:50) simulates \"Check-out Storm\" behavior"
+rationale: "Flash Sale (50:50) simulates \"Check-out Storm\" behavior",
+change_note: "ไม่เปลี่ยน - ratio ยังคงเหมือนเดิม"
 },
 {
 parameter_name: "Request Rate (RPS)",
-measurement_method: "k6 ยิง Traffic จำลอง",
-phase_1_off_peak: "~3-5 RPS",
-phase_2_normal: "~15-20 RPS",
-phase_3_peak: "~45-60 RPS",
-phase_4_flash_sale: "~150-200 RPS",
-constraint: "Limited by 0.25 vCPU",
-rationale: "RPS คำนวณจาก (VUs × (1 / avg_think_time))"
+measurement_method: "k6 ยิง Traffic จำลอง (local → GCP)",
+phase_1_off_peak: "~5-10 RPS",
+phase_2_normal: "~25-40 RPS",
+phase_3_peak: "~80-150 RPS",
+phase_4_flash_sale: "~300-500 RPS",
+previous_constraint: "Limited by 0.25 vCPU",
+new_constraint: "Limited by GCP VM (n2-standard-2 or c2-standard-2)",
+rationale: "RPS สูงขึ้นมากเนื่องจากมี dedicated CPU + pool ใหญ่ขึ้น",
+change_note: "ปรับขึ้นทุก phase เนื่องจาก infra ใหม่ไม่มีข้อจำกัด 0.25 vCPU"
 }
 ]
 },
 {
 category: "Data Distribution",
+change_note: "ไม่เปลี่ยน - ค่า Zipf α และ Poisson λ ยังคงเหมือนเดิม",
 parameters: [
 {
 parameter_name: "Product Selection Skew (Zipf α)",
@@ -112,7 +121,17 @@ interpretation: "λ = ค่าเฉลี่ยจำนวน items ใน ca
 },
 {
 category: "Infrastructure (Database)",
-neon_free_tier_specs: {
+migration_from: "Neon Free Tier",
+migration_to: "Neon Launch Plan",
+neon_launch_plan_specs: {
+cpu: "1-2 CU (TBD after signup - 1 CU = 1 vCPU/4GB RAM, 2 CU = 2 vCPU/8GB RAM)",
+ram: "4-8 GB (dedicated)",
+storage: "10 GB included",
+compute_setting: "Fixed Size (Min CU = Max CU เพื่อขจัดปัญหา Autoscaling)",
+region: "aws-ap-southeast-1 (Singapore)",
+cost_note: "1 CU ≈ $0.14/ชม. (5 บาท/ชม.), เปิด Fixed Size เฉพาะตอนเทส"
+},
+previous_free_tier_specs: {
 cpu: "0.25 vCPU (shared)",
 ram: "1 GB (shared)",
 storage: "500 MB",
@@ -123,35 +142,66 @@ parameters: [
 {
 parameter_name: "Max Parallel Workers",
 postgres_setting: "max_parallel_workers_per_gather",
-recommended_value: 0,
+recommended_value: 2,
+previous_value: 0,
 default_value: 2,
-rationale: "Disable parallel query execution เพื่อลด context switching overhead บน 0.25 vCPU",
-implementation: "SET max_parallel_workers_per_gather = 0;"
+rationale: "Launch Plan มี dedicated CPU → เปิด Parallel Query ได้ → Postgres ได้โชว์ Parallel Index Scan",
+implementation: "SET max_parallel_workers_per_gather = 2;",
+change_note: "ปรับจาก 0 → 2 (กลับเป็น default)"
 },
 {
 parameter_name: "Connection Pool Size",
 pooler_type: "PgBouncer (Transaction Mode)",
-recommended_value: 20,
+recommended_value: "50-100 (TBD after signup - ขึ้นกับ CU ที่เลือก)",
+previous_value: 20,
 fixed_across_all_phases: true,
-neon_connection_string_format: "postgres://user:pass@ep-xxx-pooler.us-east-2.aws.neon.tech/db",
-critical_note: "ต้องใช้ Endpoint ที่มีคำว่า '-pooler' เสมอ",
-rationale: "ป้องกัน Database ล่มจาก Connection Storm และ CPU saturation from forking",
-vu_to_pool_ratio: {
-phase_1: "1:1 (20 VUs : 20 connections)",
-phase_2: "5:1 (100 VUs : 20 connections)",
-phase_3: "15:1 (300 VUs : 20 connections)",
-phase_4: "50:1 (1000 VUs : 20 connections)"
+neon_connection_string_format: "postgres://user:pass@ep-xxx-pooler.ap-southeast-1.aws.neon.tech/db",
+critical_note: "ต้องใช้ Endpoint ที่มีคำว่า '-pooler' เสมอ + Region ต้องเป็น Singapore",
+rationale: "1-2 CU รองรับ 400-800 max_connections → pool 50-100 เหมาะสม",
+change_note: "ปรับจาก 20 → 50-100 (TBD)",
+vu_to_pool_ratio_with_50: {
+phase_1: "1:2.5 (20 VUs : 50 connections)",
+phase_2: "2:1 (100 VUs : 50 connections)",
+phase_3: "6:1 (300 VUs : 50 connections)",
+phase_4: "20:1 (1000 VUs : 50 connections)"
 },
-expected_impact: "Connection queuing becomes bottleneck starting Phase 2"
+vu_to_pool_ratio_with_100: {
+phase_1: "1:5 (20 VUs : 100 connections)",
+phase_2: "1:1 (100 VUs : 100 connections)",
+phase_3: "3:1 (300 VUs : 100 connections)",
+phase_4: "10:1 (1000 VUs : 100 connections)"
+},
+expected_impact: "Connection pool ไม่เป็น bottleneck หลัก → ผลเทสจะ reflect Index performance ชัดเจนขึ้น"
 },
 {
 parameter_name: "Connection Pool Mode",
 recommended_value: "Transaction",
 alternative: "Session (not recommended for high concurrency)",
 rationale: "Transaction mode รองรับ Concurrent Users จำนวนมากได้ดีกว่า Session mode",
-implementation: "ตั้งค่าใน Neon Dashboard หรือ PgBouncer config"
+implementation: "ตั้งค่าใน Neon Dashboard",
+change_note: "ไม่เปลี่ยน - คงเดิม"
 }
 ]
+},
+{
+category: "Infrastructure (Application Server)",
+migration_from: "Local Development Machine",
+migration_to: "GCP VM",
+gcp_vm_specs: {
+recommended: "n2-standard-2 (2 vCPU, 8GB RAM) หรือ c2-standard-2 (Compute-optimized)",
+avoid: "e2 series (shared-core มี CPU Steal → ผลเทสแกว่ง)",
+region: "asia-southeast1 (Singapore) - ต้องตรงกับ Neon region",
+runtime: "Node.js + PM2 cluster mode (2 workers = 2 cores)",
+budget: "GCP Free Credit $300"
+},
+region_matching_note: "GCP (asia-southeast1) ↔ Neon (aws-ap-southeast-1) → latency ~2-5ms"
+},
+{
+category: "Infrastructure (k6 Load Tester)",
+location: "Local Machine (i5-9300H: 4 core / 8 thread)",
+target: "GCP VM endpoint",
+warning: "ยิง Load ระดับ 1,000 VUs จากคอมบ้านผ่าน ISP อาจชน Router/Bandwidth limit",
+fallback: "ถ้า Connection Timeout เยอะ → ย้าย k6 ไปเปิด VM บน GCP"
 },
 {
 category: "Test Execution Strategy",
@@ -160,20 +210,34 @@ pre_test_setup: [
 step: 1,
 action: "Verify Storage Space",
 command: "SELECT pg_database_size(current_database()) / 1024 / 1024 AS size_mb;",
-threshold: "< 400 MB",
+threshold: "< 8 GB",
+previous_threshold: "< 400 MB",
 if_exceeded: "ต้อง TRUNCATE fact tables และ re-seed"
 },
 {
 step: 2,
-action: "Disable Parallel Workers",
-command: "SET max_parallel_workers_per_gather = 0;",
+action: "Set Parallel Workers",
+command: "SET max_parallel_workers_per_gather = 2;",
+previous_command: "SET max_parallel_workers_per_gather = 0;",
 scope: "Session-level (ต้องรันทุกครั้งที่เชื่อมต่อใหม่)"
 },
 {
 step: 3,
+action: "Set Neon Compute to Fixed Size",
+instruction: "Neon Dashboard → Compute → Edit → Set Min CU = Max CU (TBD: 1 or 2)",
+scope: "ก่อนเริ่มยิง k6 ทุกครั้ง"
+},
+{
+step: 4,
 action: "Verify Connection Pool",
 check: "Connection string มี '-pooler' หรือไม่",
 required: "Yes - ต้องมี"
+},
+{
+step: 5,
+action: "Verify Region Matching",
+check: "GCP (asia-southeast1) ↔ Neon (aws-ap-southeast-1)",
+validation: "ping ≤ 5ms"
 }
 ],
 between_phases_cleanup: [
@@ -181,33 +245,36 @@ between_phases_cleanup: [
 step: 1,
 action: "Truncate Fact Tables",
 commands: [
-TRUNCATE TABLE \ProductOnOrder\" CASCADE;",
-TRUNCATE TABLE \Order\" CASCADE;"
+"TRUNCATE TABLE \"ProductOnOrder\" CASCADE;",
+"TRUNCATE TABLE \"Order\" CASCADE;"
 ],
 reason: "ป้องกัน Table Bloat และ WAL เต็ม"
 },
 {
 step: 2,
 action: "Re-seed Initial Data",
-orders_count: "50,000 rows",
-order_items_count: "150,000 rows",
+orders_count: "500,000 rows",
+order_items_count: "2,500,000 rows",
+previous_orders_count: "50,000 rows",
+previous_order_items_count: "150,000 rows",
 method: "Run seeding script with Poisson(λ=3) distribution"
 },
 {
 step: 3,
 action: "Verify Storage",
 command: "SELECT pg_database_size(current_database()) / 1024 / 1024 AS size_mb;",
-expected: "~285 MB (back to baseline)"
+expected: "~1.8 GB (back to baseline)",
+previous_expected: "~285 MB"
 }
 ],
 metrics_to_collect: [
-Response Time (p50, p95, p99),
-Throughput (successful requests/sec),
-Error Rate (%),
-Connection Wait Time (from PgBouncer logs),
-Database CPU Usage (%),
-Active Connections Count,
-Query Execution Time (from pg_stat_statements)
+"Response Time (p50, p95, p99)",
+"Throughput (successful requests/sec)",
+"Error Rate (%)",
+"Connection Wait Time (from PgBouncer logs)",
+"Database CPU Usage (%)",
+"Active Connections Count",
+"Query Execution Time (from pg_stat_statements)"
 ]
 }
 ]
