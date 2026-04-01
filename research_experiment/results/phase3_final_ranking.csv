@@ -1,16 +1,13 @@
-Rank,ID,Table,Tag,Imp_Pct,Freq,Penalty,Score
-1,FK01_ImageProductId,Image,Base_Standard,97.84,15,1.0,1467.6
-2,FK03_FavoriteProductId,Favorite,Base_Standard,92.83,14,1.0,1299.62
-3,P19_SearchFiltersPrice,Product,Base_Standard,96.17,14,1.2,1024.23
-4,P16_DisplayProdByUserCategory,Product,Base_Standard,58.2,12,1.2,531.29
-5,FK04_RatingProductId,Rating,Base_Standard,39.28,12,1.0,471.36
-6,P20_SearchFiltersBrand,Product,Base_Standard,40.38,14,1.2,430.05
-7,U12_GetOrderPaginated,Order,Dynamic_FlashSale,95.23,15,2.5,361.37
-8,P18_SearchFiltersCategory,Product,Base_Standard,32.93,14,1.2,350.71
-9,FK07_OrderOrderedById,Order,Dynamic_FlashSale,80.68,15,2.5,306.16
-10,U11_GetOrder,Order,Dynamic_FlashSale,80.49,15,2.5,305.44
-11,U13_AddProdRatingGroupBy,Rating,Base_Standard,30.5,10,1.0,305.0
-12,FK06_ProductOnOrderOrderId,ProductOnOrder,Dynamic_FlashSale,99.73,12,2.5,302.76
-13,P15_DisplayProdByUser_Orders,Order,Dynamic_FlashSale,83.31,12,2.5,252.91
-14,P13_ProductOnOrderByProductId,ProductOnOrder,Dynamic_FlashSale,52.46,15,2.5,199.07
-15,U15_FavoriteLimitCheck,Favorite,Base_Standard,7.43,16,1.0,118.88
+Rank,ID,Merged_IDs,Table,Tag,Baseline_Cost,New_Cost,Imp_Pct,Read_Benefit,Write_Overhead,BCR,Index_Size_MB,Queries_Served
+1,P16_DisplayProdByUserCategory,P16_DisplayProdByUserCategory,Product,Base_Standard,2020.44,1189.64,41.12,41540.0,0.0,41540000.0,0.77,1
+2,P19_SearchFiltersPrice,P19_SearchFiltersPrice,Product,Base_Standard,2014.87,119.73,94.06,28427.1,0.0,28427100.0,0.55,1
+3,FK01_ImageProductId,FK01_ImageProductId,Image,Base_Standard,750.3,8.13,98.92,18554.25,0.0,18554250.0,0.44,1
+4,P20_SearchFiltersBrand,P20_SearchFiltersBrand,Product,Base_Standard,1964.72,1579.96,19.58,5771.4,0.0,5771400.0,0.44,1
+5,P18_SearchFiltersCategory,P18_SearchFiltersCategory,Product,Base_Standard,1964.72,1665.95,15.21,4481.55,0.0,4481550.0,0.44,1
+6,FK04_RatingProductId,FK04_RatingProductId | U13_AddProdRatingGroupBy,Rating,Base_Standard,20.92,12.52,40.15,321.25,0.0078,41120.0,0.01,2
+7,P11_GetProductsByIds,P11_GetProductsByIds | P01_GetStock | P12_ReadAprod | U02_CreateUserCartProduct | U10_SaveOrderProduct | U14_FavoriteProductCheck | P02_GetProductImages,Product,Base_Standard,758.65,8.05,98.94,40.5,0.0,40500.0,0.44,7
+8,P15_DisplayProdByUser_Orders,P15_DisplayProdByUser_Orders,Order,Dynamic_FlashSale,13714.97,16.11,99.88,684943.0,155.6719,4399.91,17.3,1
+9,FK07_OrderOrderedById,FK07_OrderOrderedById,Order,Dynamic_FlashSale,12673.35,16.1,99.87,316431.25,99.6328,3175.97,11.07,1
+10,FK06_ProductOnOrderOrderId,FK06_ProductOnOrderOrderId,ProductOnOrder,Dynamic_FlashSale,34811.67,8.16,99.98,870087.75,497.6719,1748.32,55.3,1
+11,P13_ProductOnOrderByProductId,P13_ProductOnOrderByProductId,ProductOnOrder,Dynamic_FlashSale,35255.27,1517.19,95.7,843452.0,497.6719,1694.8,55.3,1
+12,U11_GetOrder,U11_GetOrder | U12_GetOrderPaginated,Order,Dynamic_FlashSale,12673.32,16.1,99.87,25314.44,149.4844,169.35,16.61,2

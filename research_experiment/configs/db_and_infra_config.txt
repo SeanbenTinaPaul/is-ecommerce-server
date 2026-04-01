@@ -65,7 +65,7 @@ category: "Workload Configuration",
 parameters: [
 {
 parameter_name: "Read/Write Ratio",
-phase_1_off_peak: "95:5",
+phase_1_off_peak: "80:20",
 phase_2_normal: "80:20",
 phase_3_peak: "80:20",
 phase_4_flash_sale: "50:50",
@@ -124,12 +124,14 @@ category: "Infrastructure (Database)",
 migration_from: "Neon Free Tier",
 migration_to: "Neon Launch Plan",
 neon_launch_plan_specs: {
-cpu: "1-2 CU (TBD after signup - 1 CU = 1 vCPU/4GB RAM, 2 CU = 2 vCPU/8GB RAM)",
-ram: "4-8 GB (dedicated)",
+cpu: "2 CU (2 vCPU dedicated)",
+ram: "8 GB (dedicated)",
 storage: "10 GB included",
-compute_setting: "Fixed Size (Min CU = Max CU เพื่อขจัดปัญหา Autoscaling)",
+compute_setting: "Fixed Size (Min CU = Max CU = 2 เพื่อขจัดปัญหา Autoscaling)",
 region: "aws-ap-southeast-1 (Singapore)",
-cost_note: "1 CU ≈ $0.14/ชม. (5 บาท/ชม.), เปิด Fixed Size เฉพาะตอนเทส"
+max_connections: "~800 (2 CU default)",
+cost_note: "2 CU ≈ $0.28/ชม. (10 บาท/ชม.), เปิด Fixed Size เฉพาะตอนเทส",
+status: "✅ สมัครและตั้งค่าแล้ว"
 },
 previous_free_tier_specs: {
 cpu: "0.25 vCPU (shared)",
@@ -152,26 +154,21 @@ change_note: "ปรับจาก 0 → 2 (กลับเป็น default)"
 {
 parameter_name: "Connection Pool Size",
 pooler_type: "PgBouncer (Transaction Mode)",
-recommended_value: "50-100 (TBD after signup - ขึ้นกับ CU ที่เลือก)",
+recommended_value: 100,
 previous_value: 20,
 fixed_across_all_phases: true,
 neon_connection_string_format: "postgres://user:pass@ep-xxx-pooler.ap-southeast-1.aws.neon.tech/db",
 critical_note: "ต้องใช้ Endpoint ที่มีคำว่า '-pooler' เสมอ + Region ต้องเป็น Singapore",
-rationale: "1-2 CU รองรับ 400-800 max_connections → pool 50-100 เหมาะสม",
-change_note: "ปรับจาก 20 → 50-100 (TBD)",
-vu_to_pool_ratio_with_50: {
-phase_1: "1:2.5 (20 VUs : 50 connections)",
-phase_2: "2:1 (100 VUs : 50 connections)",
-phase_3: "6:1 (300 VUs : 50 connections)",
-phase_4: "20:1 (1000 VUs : 50 connections)"
+rationale: "2 CU รองรับ ~800 max_connections → pool 100 ใช้แค่ 12.5% → เหลือ headroom เพียงพอ",
+change_note: "ปรับจาก 20 → 100",
+vu_to_pool_ratio: {
+phase_1: "1:5 (20 VUs : 100 connections → pool เหลือเฟือ)",
+phase_2: "1:1 (100 VUs : 100 connections → no queuing)",
+phase_3: "3:1 (300 VUs : 100 connections → low queuing)",
+phase_4: "10:1 (1000 VUs : 100 connections → moderate-high queuing)"
 },
-vu_to_pool_ratio_with_100: {
-phase_1: "1:5 (20 VUs : 100 connections)",
-phase_2: "1:1 (100 VUs : 100 connections)",
-phase_3: "3:1 (300 VUs : 100 connections)",
-phase_4: "10:1 (1000 VUs : 100 connections)"
-},
-expected_impact: "Connection pool ไม่เป็น bottleneck หลัก → ผลเทสจะ reflect Index performance ชัดเจนขึ้น"
+expected_impact: "Connection pool ไม่เป็น bottleneck หลักแม้ใน Phase 3 → ผลเทสจะ reflect Index performance ชัดเจนยิ่งขึ้น",
+status: "✅ ตั้งค่าแล้ว"
 },
 {
 parameter_name: "Connection Pool Mode",
@@ -268,13 +265,26 @@ previous_expected: "~285 MB"
 }
 ],
 metrics_to_collect: [
-"Response Time (p50, p95, p99)",
-"Throughput (successful requests/sec)",
-"Error Rate (%)",
-"Connection Wait Time (from PgBouncer logs)",
-"Database CPU Usage (%)",
-"Active Connections Count",
-"Query Execution Time (from pg_stat_statements)"
+{
+  metric: "Response Time (p50, p95, p99) & Throughput & Error Rate",
+  tool: "k6 Load Tester",
+  collection_method: "Auto-collected via CLI flag: k6 run script.js --summary-export=k6_result.json"
+},
+{
+  metric: "Query Execution Time & Call Counts (Evidence for Indexing)",
+  tool: "PostgreSQL (pg_stat_statements)",
+  collection_method: "Execute phase3_metrics_collector.py (Mode: collect) immediately after k6 test"
+},
+{
+  metric: "Database CPU Usage (%)",
+  tool: "Neon Console Dashboard",
+  collection_method: "Manual screen capture of Compute Metrics during the 15-minute test"
+},
+{
+  metric: "Connection Pool Queuing",
+  tool: "k6 Metrics + pg_stat_activity",
+  collection_method: "Monitor k6 'http_req_waiting' for spikes as proxy for PgBouncer wait time"
+}
 ]
 }
 ]

@@ -1,0 +1,380 @@
+{
+  "metadata": {
+    "model": "Benefit-Cost Ratio (BCR)",
+    "threshold": 1.0,
+    "funnel_source": "workload-funnel-analysis.md",
+    "read_weight_scenario": "Standard Shopping (TPC-W WIPS 80:20)",
+    "write_weight_scenario": "Flash Sale (TPC-W WIPSo 50:50)",
+    "references": [
+      "Chaudhuri & Narasayya (1997) — Cost-Driven Index Selection, VLDB",
+      "Li et al. (2024) — Automatic Index Tuning Survey, IEEE TKDE",
+      "Cormen et al. (2009) — Greedy Selection, CLRS"
+    ],
+    "total_candidates": 29,
+    "selected_count": 12
+  },
+  "selected": [
+    {
+      "rank": 1,
+      "id": "P16_DisplayProdByUserCategory",
+      "merged_ids": [
+        "P16_DisplayProdByUserCategory"
+      ],
+      "table": "Product",
+      "tag": "Base_Standard",
+      "index_def": "CREATE INDEX ON \"Product\" (\"categoryId\", \"quantity\", \"updatedAt\" DESC)",
+      "bcr": 41540000.0,
+      "read_benefit": 41540.0,
+      "write_overhead": 0.0,
+      "baseline_cost": 2020.44,
+      "new_cost": 1189.64,
+      "improvement_pct": 41.12,
+      "index_size_mb": 0.77,
+      "query_count": 1
+    },
+    {
+      "rank": 2,
+      "id": "P19_SearchFiltersPrice",
+      "merged_ids": [
+        "P19_SearchFiltersPrice"
+      ],
+      "table": "Product",
+      "tag": "Base_Standard",
+      "index_def": "CREATE INDEX ON \"Product\" (\"price\")",
+      "bcr": 28427100.0,
+      "read_benefit": 28427.1,
+      "write_overhead": 0.0,
+      "baseline_cost": 2014.87,
+      "new_cost": 119.73,
+      "improvement_pct": 94.06,
+      "index_size_mb": 0.55,
+      "query_count": 1
+    },
+    {
+      "rank": 3,
+      "id": "FK01_ImageProductId",
+      "merged_ids": [
+        "FK01_ImageProductId"
+      ],
+      "table": "Image",
+      "tag": "Base_Standard",
+      "index_def": "CREATE INDEX ON \"Image\" (\"productId\")",
+      "bcr": 18554250.0,
+      "read_benefit": 18554.25,
+      "write_overhead": 0.0,
+      "baseline_cost": 750.3,
+      "new_cost": 8.13,
+      "improvement_pct": 98.92,
+      "index_size_mb": 0.44,
+      "query_count": 1
+    },
+    {
+      "rank": 4,
+      "id": "P20_SearchFiltersBrand",
+      "merged_ids": [
+        "P20_SearchFiltersBrand"
+      ],
+      "table": "Product",
+      "tag": "Base_Standard",
+      "index_def": "CREATE INDEX ON \"Product\" (\"brandId\")",
+      "bcr": 5771400.0,
+      "read_benefit": 5771.4,
+      "write_overhead": 0.0,
+      "baseline_cost": 1964.72,
+      "new_cost": 1579.96,
+      "improvement_pct": 19.58,
+      "index_size_mb": 0.44,
+      "query_count": 1
+    },
+    {
+      "rank": 5,
+      "id": "P18_SearchFiltersCategory",
+      "merged_ids": [
+        "P18_SearchFiltersCategory"
+      ],
+      "table": "Product",
+      "tag": "Base_Standard",
+      "index_def": "CREATE INDEX ON \"Product\" (\"categoryId\")",
+      "bcr": 4481550.0,
+      "read_benefit": 4481.55,
+      "write_overhead": 0.0,
+      "baseline_cost": 1964.72,
+      "new_cost": 1665.95,
+      "improvement_pct": 15.21,
+      "index_size_mb": 0.44,
+      "query_count": 1
+    },
+    {
+      "rank": 6,
+      "id": "FK04_RatingProductId",
+      "merged_ids": [
+        "FK04_RatingProductId",
+        "U13_AddProdRatingGroupBy"
+      ],
+      "table": "Rating",
+      "tag": "Base_Standard",
+      "index_def": "CREATE INDEX ON \"Rating\" (\"productId\")",
+      "bcr": 41120.0,
+      "read_benefit": 321.25,
+      "write_overhead": 0.0078,
+      "baseline_cost": 20.92,
+      "new_cost": 12.52,
+      "improvement_pct": 40.15,
+      "index_size_mb": 0.01,
+      "query_count": 2
+    },
+    {
+      "rank": 7,
+      "id": "P11_GetProductsByIds",
+      "merged_ids": [
+        "P11_GetProductsByIds",
+        "P01_GetStock",
+        "P12_ReadAprod",
+        "U02_CreateUserCartProduct",
+        "U10_SaveOrderProduct",
+        "U14_FavoriteProductCheck",
+        "P02_GetProductImages"
+      ],
+      "table": "Product",
+      "tag": "Base_Standard",
+      "index_def": "CREATE INDEX ON \"Product\" (\"id\")",
+      "bcr": 40500.0,
+      "read_benefit": 40.5,
+      "write_overhead": 0.0,
+      "baseline_cost": 758.65,
+      "new_cost": 8.05,
+      "improvement_pct": 98.94,
+      "index_size_mb": 0.44,
+      "query_count": 7
+    },
+    {
+      "rank": 8,
+      "id": "P15_DisplayProdByUser_Orders",
+      "merged_ids": [
+        "P15_DisplayProdByUser_Orders"
+      ],
+      "table": "Order",
+      "tag": "Dynamic_FlashSale",
+      "index_def": "CREATE INDEX ON \"Order\" (\"orderedById\", \"status\")",
+      "bcr": 4399.9149,
+      "read_benefit": 684943.0,
+      "write_overhead": 155.6719,
+      "baseline_cost": 13714.97,
+      "new_cost": 16.11,
+      "improvement_pct": 99.88,
+      "index_size_mb": 17.3,
+      "query_count": 1
+    },
+    {
+      "rank": 9,
+      "id": "FK07_OrderOrderedById",
+      "merged_ids": [
+        "FK07_OrderOrderedById"
+      ],
+      "table": "Order",
+      "tag": "Dynamic_FlashSale",
+      "index_def": "CREATE INDEX ON \"Order\" (\"orderedById\")",
+      "bcr": 3175.9743,
+      "read_benefit": 316431.25,
+      "write_overhead": 99.6328,
+      "baseline_cost": 12673.35,
+      "new_cost": 16.1,
+      "improvement_pct": 99.87,
+      "index_size_mb": 11.07,
+      "query_count": 1
+    },
+    {
+      "rank": 10,
+      "id": "FK06_ProductOnOrderOrderId",
+      "merged_ids": [
+        "FK06_ProductOnOrderOrderId"
+      ],
+      "table": "ProductOnOrder",
+      "tag": "Dynamic_FlashSale",
+      "index_def": "CREATE INDEX ON \"ProductOnOrder\" (\"orderId\")",
+      "bcr": 1748.3161,
+      "read_benefit": 870087.75,
+      "write_overhead": 497.6719,
+      "baseline_cost": 34811.67,
+      "new_cost": 8.16,
+      "improvement_pct": 99.98,
+      "index_size_mb": 55.3,
+      "query_count": 1
+    },
+    {
+      "rank": 11,
+      "id": "P13_ProductOnOrderByProductId",
+      "merged_ids": [
+        "P13_ProductOnOrderByProductId"
+      ],
+      "table": "ProductOnOrder",
+      "tag": "Dynamic_FlashSale",
+      "index_def": "CREATE INDEX ON \"ProductOnOrder\" (\"productId\")",
+      "bcr": 1694.7954,
+      "read_benefit": 843452.0,
+      "write_overhead": 497.6719,
+      "baseline_cost": 35255.27,
+      "new_cost": 1517.19,
+      "improvement_pct": 95.7,
+      "index_size_mb": 55.3,
+      "query_count": 1
+    },
+    {
+      "rank": 12,
+      "id": "U11_GetOrder",
+      "merged_ids": [
+        "U11_GetOrder",
+        "U12_GetOrderPaginated"
+      ],
+      "table": "Order",
+      "tag": "Dynamic_FlashSale",
+      "index_def": "CREATE INDEX ON \"Order\" (\"orderedById\", \"createdAt\" DESC)",
+      "bcr": 169.3451,
+      "read_benefit": 25314.44,
+      "write_overhead": 149.4844,
+      "baseline_cost": 12673.32,
+      "new_cost": 16.1,
+      "improvement_pct": 99.87,
+      "index_size_mb": 16.61,
+      "query_count": 2
+    }
+  ],
+  "rejected": [
+    {
+      "id": "U01_CreateUserCartUser",
+      "table": "User",
+      "bcr": 0.4289,
+      "read_benefit": 19.0,
+      "write_overhead": 44.2969,
+      "reason": "BCR < threshold"
+    },
+    {
+      "id": "AU01_RegisterCheckEmail",
+      "table": "User",
+      "bcr": 0.2942,
+      "read_benefit": 28.5,
+      "write_overhead": 96.875,
+      "reason": "BCR < threshold"
+    },
+    {
+      "id": "PA02_ReqRefundOrder",
+      "table": "Order",
+      "bcr": 0.0462,
+      "read_benefit": 9.5,
+      "write_overhead": 205.5234,
+      "reason": "BCR < threshold"
+    },
+    {
+      "id": "P03_UpdateDiscount",
+      "table": "Discount",
+      "bcr": 0.0,
+      "read_benefit": 0,
+      "write_overhead": 0.0,
+      "reason": "Zero improvement"
+    },
+    {
+      "id": "P07_ListProd",
+      "table": "Product",
+      "bcr": 0.0,
+      "read_benefit": 0,
+      "write_overhead": 0.0,
+      "reason": "Zero improvement"
+    },
+    {
+      "id": "P09_ListFlashSaleProducts",
+      "table": "Product",
+      "bcr": 0.0,
+      "read_benefit": 0,
+      "write_overhead": 0.0,
+      "reason": "Zero improvement"
+    },
+    {
+      "id": "P10_FlashSaleDiscounts",
+      "table": "Discount",
+      "bcr": 0.0,
+      "read_benefit": 0,
+      "write_overhead": 0.0,
+      "reason": "Zero improvement"
+    },
+    {
+      "id": "P14_DisplayProdBy",
+      "table": "Product",
+      "bcr": 0.0,
+      "read_benefit": 0,
+      "write_overhead": 0.0,
+      "reason": "Zero improvement"
+    },
+    {
+      "id": "P17_SearchFiltersTitle",
+      "table": "Product",
+      "bcr": 0.0,
+      "read_benefit": 0,
+      "write_overhead": 0.0,
+      "reason": "Zero improvement"
+    },
+    {
+      "id": "P23_ChangeStatusDiscount",
+      "table": "Discount",
+      "bcr": 0.0,
+      "read_benefit": 0,
+      "write_overhead": 0.0,
+      "reason": "Zero improvement"
+    },
+    {
+      "id": "U03_CreateUserCartFindCart",
+      "table": "Cart",
+      "bcr": 0.0,
+      "read_benefit": 0,
+      "write_overhead": 0.7812,
+      "reason": "Zero improvement"
+    },
+    {
+      "id": "U04_ProductOnCartUpsert",
+      "table": "ProductOnCart",
+      "bcr": 0.0,
+      "read_benefit": 0,
+      "write_overhead": 0.7812,
+      "reason": "Zero improvement"
+    },
+    {
+      "id": "U05_ProductOnCartDeleteNotIn",
+      "table": "ProductOnCart",
+      "bcr": 0.0,
+      "read_benefit": 0,
+      "write_overhead": 0.7812,
+      "reason": "Zero improvement"
+    },
+    {
+      "id": "U15_FavoriteLimitCheck",
+      "table": "Favorite",
+      "bcr": 0.0,
+      "read_benefit": 0,
+      "write_overhead": 0.1719,
+      "reason": "Zero improvement"
+    },
+    {
+      "id": "U16_FavoriteExist",
+      "table": "Favorite",
+      "bcr": 0.0,
+      "read_benefit": 0,
+      "write_overhead": 0.1719,
+      "reason": "Zero improvement"
+    },
+    {
+      "id": "BR03_ListBrand",
+      "table": "Brand",
+      "bcr": 0.0,
+      "read_benefit": 0,
+      "write_overhead": 0.0,
+      "reason": "Zero improvement"
+    },
+    {
+      "id": "FK03_FavoriteProductId",
+      "table": "Favorite",
+      "bcr": 0.0,
+      "read_benefit": 0,
+      "write_overhead": 0.1719,
+      "reason": "Zero improvement"
+    }
+  ]
+}
