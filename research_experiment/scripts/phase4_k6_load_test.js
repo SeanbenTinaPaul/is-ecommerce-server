@@ -21,9 +21,8 @@
  */
 
 import http from 'k6/http';
-import { check, sleep, group } from 'k6';
+import { sleep, group } from 'k6';
 import { Counter, Rate, Trend } from 'k6/metrics';
-import { SharedArray } from 'k6/data';
 
 // ============================================================================
 // Section: Custom Metrics
@@ -48,12 +47,13 @@ const PASSWORD = '123456';  // Default password from seeding
 const TOTAL_PRODUCTS = 20000;
 const PRODUCT_ID_START = 55; // productId starts from 55
 
-// Phase durations (seconds)
+// Phase durations (seconds) — aligned with workload_config.txt
+// Ramp-up = time for infra warm-up (pool, JIT, cache), NOT real traffic arrival modeling
 const PHASE_DURATIONS = {
-  phase1: { rampUp: 60, sustained: 120 },  // 5min warm → 2min sustained
-  phase2: { rampUp: 60, sustained: 180 },  // 5min ramp → 3min sustained
-  phase3: { rampUp: 30, sustained: 180 },  // 2min ramp → 3min sustained
-  phase4: { rampUp: 30, sustained: 300 },  // 30s ramp → 5min sustained
+  phase1: { rampUp: 60, sustained: 120 },   // 1min ramp (20 VU / 100 pool = trivial) → 2min measurement
+  phase2: { rampUp: 120, sustained: 180 },  // 2min ramp (100 VU / 100 pool = 1:1, gentle) → 3min measurement
+  phase3: { rampUp: 120, sustained: 180 },  // 2min ramp (300 VU / 100 pool = 3:1, queue builds ~40s in) → 3min measurement
+  phase4: { rampUp: 30, sustained: 300 },   // 30s ramp (flash sale burst — intentionally aggressive) → 5min measurement
 };
 
 // Think time ranges per phase (seconds)
@@ -236,21 +236,35 @@ function zipfRandom(n, alpha) {
 }
 
 // Cache harmonic numbers per (n, alpha) to avoid recalculation
+// H(n, α) = Σ_{k=1}^{n} 1/k^α — the Zipf normalization constant
 const harmonicCache = {};
 function harmonicNumber(n, alpha) {
   const key = `${n}_${alpha}`;
   if (harmonicCache[key]) return harmonicCache[key];
 
-  // For large n, approximate with first 1000 + tail
+  // Compute first min(n, 1000) terms exactly
   const limit = Math.min(n, 1000);
   let h = 0;
   for (let k = 1; k <= limit; k++) {
     h += 1.0 / Math.pow(k, alpha);
   }
-  // Approximate tail for n > 1000
-  if (n > 1000 && alpha > 1) {
-    h += (Math.pow(1000, 1 - alpha) - Math.pow(n, 1 - alpha)) / (alpha - 1);
+
+  // Approximate tail using integral: ∫_{M}^{n} x^{-α} dx
+  // This is critical for α < 1 where tail terms are significant
+  // (e.g., α=0.6 → tail contains ~62% of total probability mass)
+  if (n > 1000) {
+    if (alpha < 1) {
+      // ∫ x^{-α} dx = x^{1-α}/(1-α), for α < 1: (n^{1-α} - M^{1-α})/(1-α)
+      h += (Math.pow(n, 1 - alpha) - Math.pow(1000, 1 - alpha)) / (1 - alpha);
+    } else if (alpha > 1) {
+      // For α > 1: (M^{1-α} - n^{1-α})/(α-1)
+      h += (Math.pow(1000, 1 - alpha) - Math.pow(n, 1 - alpha)) / (alpha - 1);
+    } else {
+      // α === 1: harmonic series tail ≈ ln(n/M)
+      h += Math.log(n / 1000);
+    }
   }
+
   harmonicCache[key] = h;
   return h;
 }

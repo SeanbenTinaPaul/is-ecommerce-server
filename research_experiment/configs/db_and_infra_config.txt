@@ -65,24 +65,24 @@ category: "Workload Configuration",
 parameters: [
 {
 parameter_name: "Read/Write Ratio",
-phase_1_off_peak: "80:20",
-phase_2_normal: "80:20",
-phase_3_peak: "80:20",
-phase_4_flash_sale: "50:50",
+day_phase_1_off_peak: "80:20",
+day_phase_2_normal: "80:20",
+day_phase_3_peak: "80:20",
+day_phase_4_flash_sale: "50:50",
 rationale: "Flash Sale (50:50) simulates \"Check-out Storm\" behavior",
 change_note: "ไม่เปลี่ยน - ratio ยังคงเหมือนเดิม"
 },
 {
 parameter_name: "Request Rate (RPS)",
 measurement_method: "k6 ยิง Traffic จำลอง (local → GCP)",
-phase_1_off_peak: "~5-10 RPS",
-phase_2_normal: "~25-40 RPS",
-phase_3_peak: "~80-150 RPS",
-phase_4_flash_sale: "~300-500 RPS",
+day_phase_1_off_peak: "~5-10 RPS",
+day_phase_2_normal: "~25-40 RPS",
+day_phase_3_peak: "~80-150 RPS",
+day_phase_4_flash_sale: "~300-500 RPS",
 previous_constraint: "Limited by 0.25 vCPU",
 new_constraint: "Limited by GCP VM (n2-standard-2 or c2-standard-2)",
 rationale: "RPS สูงขึ้นมากเนื่องจากมี dedicated CPU + pool ใหญ่ขึ้น",
-change_note: "ปรับขึ้นทุก phase เนื่องจาก infra ใหม่ไม่มีข้อจำกัด 0.25 vCPU"
+change_note: "ปรับขึ้นทุก day_phase เนื่องจาก infra ใหม่ไม่มีข้อจำกัด 0.25 vCPU"
 }
 ]
 },
@@ -92,28 +92,28 @@ change_note: "ไม่เปลี่ยน - ค่า Zipf α และ Poiss
 parameters: [
 {
 parameter_name: "Product Selection Skew (Zipf α)",
-phase_1_read: 0.6,
-phase_1_write: 0.5,
-phase_2_read: 0.75,
-phase_2_write: 0.7,
-phase_3_read: 0.9,
-phase_3_write: 0.85,
-phase_4_read: 0.95,
-phase_4_write: 0.95,
+day_phase_1_read: 0.6,
+day_phase_1_write: 0.5,
+day_phase_2_read: 0.75,
+day_phase_2_write: 0.7,
+day_phase_3_read: 0.9,
+day_phase_3_write: 0.85,
+day_phase_4_read: 0.95,
+day_phase_4_write: 0.95,
 rationale: "Mobile/Flash Sale behavior - สินค้ายอดนิยมถูก access บ่อยกว่า (Power Law Distribution)",
 interpretation: "α càng สูง = การกระจุกตัวที่สินค้า top มากขึ้น"
 },
 {
 parameter_name: "Order Size Distribution (Cart Size)",
 distribution_type: "Poisson",
-phase_1_read_lambda: 4,
-phase_1_write_lambda: 2,
-phase_2_read_lambda: 3,
-phase_2_write_lambda: 2,
-phase_3_read_lambda: 2,
-phase_3_write_lambda: 2,
-phase_4_read_lambda: 1,
-phase_4_write_lambda: 3,
+day_phase_1_read_lambda: 4,
+day_phase_1_write_lambda: 2,
+day_phase_2_read_lambda: 3,
+day_phase_2_write_lambda: 2,
+day_phase_3_read_lambda: 2,
+day_phase_3_write_lambda: 2,
+day_phase_4_read_lambda: 1,
+day_phase_4_write_lambda: 3,
 rationale: "Typical cart size behavior - Flash Sale มี panic buying (λ=3 = avg 2-4 items)",
 interpretation: "λ = ค่าเฉลี่ยจำนวน items ใน cart ต่อ transaction"
 }
@@ -162,12 +162,12 @@ critical_note: "ต้องใช้ Endpoint ที่มีคำว่า '-
 rationale: "2 CU รองรับ ~800 max_connections → pool 100 ใช้แค่ 12.5% → เหลือ headroom เพียงพอ",
 change_note: "ปรับจาก 20 → 100",
 vu_to_pool_ratio: {
-phase_1: "1:5 (20 VUs : 100 connections → pool เหลือเฟือ)",
-phase_2: "1:1 (100 VUs : 100 connections → no queuing)",
-phase_3: "3:1 (300 VUs : 100 connections → low queuing)",
-phase_4: "10:1 (1000 VUs : 100 connections → moderate-high queuing)"
+day_phase_1: "1:5 (20 VUs : 100 connections → pool เหลือเฟือ)",
+day_phase_2: "1:1 (100 VUs : 100 connections → no queuing)",
+day_phase_3: "3:1 (300 VUs : 100 connections → low queuing)",
+day_phase_4: "10:1 (1000 VUs : 100 connections → moderate-high queuing)"
 },
-expected_impact: "Connection pool ไม่เป็น bottleneck หลักแม้ใน Phase 3 → ผลเทสจะ reflect Index performance ชัดเจนยิ่งขึ้น",
+expected_impact: "Connection pool ไม่เป็น bottleneck หลักแม้ใน day_Phase 3 → ผลเทสจะ reflect Index performance ชัดเจนยิ่งขึ้น",
 status: "✅ ตั้งค่าแล้ว"
 },
 {
@@ -195,10 +195,10 @@ region_matching_note: "GCP (asia-southeast1) ↔ Neon (aws-ap-southeast-1) → l
 },
 {
 category: "Infrastructure (k6 Load Tester)",
-location: "Local Machine (i5-9300H: 4 core / 8 thread)",
-target: "GCP VM endpoint",
-warning: "ยิง Load ระดับ 1,000 VUs จากคอมบ้านผ่าน ISP อาจชน Router/Bandwidth limit",
-fallback: "ถ้า Connection Timeout เยอะ → ย้าย k6 ไปเปิด VM บน GCP"
+location: "GCP VM (n2-standard-4)",
+target: "GCP VM endpoint (Internal IP)",
+rationale: "ใช้ VM n2-standard-4 แยกเครื่องเพื่อป้องกันการแย่งทรัพยากร (CPU/Network) กับเครื่อง Server และเพื่อความเสถียรในการยิง Load จำนวนมากแบบไม่ติดคอขวดอินเทอร์เน็ต",
+status: "✅ สร้าง VM และติดตั้ง k6 เรียบร้อยแล้ว"
 },
 {
 category: "Test Execution Strategy",
